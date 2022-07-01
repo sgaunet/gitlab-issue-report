@@ -12,14 +12,18 @@ type Issues []Issue
 
 func (i Issues) PrintOneLine(printHeader bool) {
 	if printHeader {
-		fmt.Printf("%50s %10s %s", "Title", "State", "Updated At")
+		fmt.Printf("%-70s %10s %s\n", "Title", "State", "Updated At")
 	}
 	for idx := range i {
-		fmt.Println(i[idx].Title)
-		fmt.Println(i[idx].State)
-		fmt.Println(i[idx].UpdateAt)
-		fmt.Printf("%50s %10s %s", i[idx].Title, i[idx].State, i[idx].UpdateAt)
+		fmt.Printf("%-70s %10s %s\n", truncateStr(i[idx].Title, 70), i[idx].State, i[idx].UpdateAt.Format("2006-01-02T15:04:05-0700"))
 	}
+}
+
+func truncateStr(str string, length int) string {
+	if len(str) > length && length > 0 {
+		return str[:length]
+	}
+	return str
 }
 
 func (i Issues) PrintTab() {
