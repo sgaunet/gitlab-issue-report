@@ -103,19 +103,11 @@ func main() {
 		n.SetFilterAfter("created_after", dBegin)
 		n.SetFilterBefore("created_before", dEnd)
 	}
-	// if state != "" {
-	// 	rqt = fmt.Sprintf("issues?state=%s&%s=%s&%s=%s&page=1", state, fieldFilterAfter, dBegin.Format(time.RFC3339), fieldFilterBefore, dEnd.Format(time.RFC3339))
-	// } else {
-	// 	rqt = fmt.Sprintf("issues?%s=%s&%s=%s&page=1", fieldFilterAfter, dBegin.Format(time.RFC3339), fieldFilterBefore, dEnd.Format(time.RFC3339))
-	// }
-	// fmt.Println(rqt)
-	// _, body, _ := gitlabRequest.Request(rqt)
-	// _, body, _ := gitlabRequest.Request("issues?state=opened&updated_after=2022-06-24T08:00:00Z")
-	// fmt.Println("%v", string(res))
-	// Get project vars
 
-	// var issues []gitlabissues.Issue
-	issues, err := n.ExecRequest()
+	n.SetProjectId(project.Id)
+	// n.SetGroupId()
+	// fmt.Println(n.Url())
+	issues, err := n.GetIssues()
 	if err != nil {
 		logrus.Errorln(err.Error())
 		os.Exit(1)
