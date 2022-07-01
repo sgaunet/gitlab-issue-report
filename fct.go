@@ -25,7 +25,7 @@ func findProject(remoteOrigin string) (project, error) {
 	projectName = strings.ReplaceAll(projectName, ".git", "")
 	log.Infof("Try to find project %s in %s\n", projectName, os.Getenv("GITLAB_URI"))
 
-	_, _, res, err := gitlabRequest.Request("search?scope=projects&search=" + projectName)
+	_, res, err := gitlabRequest.Request("search?scope=projects&search=" + projectName)
 	if err != nil {
 		log.Errorln(err.Error())
 		os.Exit(1)

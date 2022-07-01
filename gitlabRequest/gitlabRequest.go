@@ -9,7 +9,7 @@ import (
 
 const GitlabApiVersion = "v4"
 
-func Request(uri string) (header *http.Header, resp *http.Response, body []byte, err error) {
+func Request(uri string) (resp *http.Response, body []byte, err error) {
 	url := fmt.Sprintf("%s/api/%s/%s", os.Getenv("GITLAB_URI"), GitlabApiVersion, uri)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -27,8 +27,5 @@ func Request(uri string) (header *http.Header, resp *http.Response, body []byte,
 	if err != nil {
 		return
 	}
-	fmt.Println("****", resp.Header.Get("x-total-pages"))
-	fmt.Println("****", resp.Header.Get("x-next-page")) // empty si pas de next-page
-
 	return
 }
