@@ -12,10 +12,10 @@ type Issues []Issue
 
 func (i Issues) PrintOneLine(printHeader bool) {
 	if printHeader {
-		fmt.Printf("%-70s %10s %s\n", "Title", "State", "Updated At")
+		fmt.Printf("%-70s %10s %-25s %-25s\n", "Title", "State", "Created At", "Updated At")
 	}
 	for idx := range i {
-		fmt.Printf("%-70s %10s %s\n", truncateStr(i[idx].Title, 70), i[idx].State, i[idx].UpdateAt.Format("2006-01-02T15:04:05-0700"))
+		fmt.Printf("%-70s %10s %25s %25s\n", truncateStr(i[idx].Title, 70), i[idx].State, i[idx].CreatedAt.Format("2006-01-02T15:04:05-0700"), i[idx].UpdateAt.Format("2006-01-02T15:04:05-0700"))
 	}
 }
 
