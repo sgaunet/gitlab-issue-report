@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/sgaunet/calcdate/calcdatelib"
 	gitlabissues "github.com/sgaunet/gitlab-issue-report/gitlabIssues"
@@ -26,9 +27,12 @@ func main() {
 		closedOption    bool
 		createdAtOption bool
 		vOption         bool
+		dBegin          time.Time
+		dEnd            time.Time
+		err             error
 	)
 	// Parameters treatment (except src + dest)
-	flag.StringVar(&interval, "i", "/-1/ ::", "interval, ex /-1/ :: to describe ...")
+	flag.StringVar(&interval, "i", "", "interval, ex '/-1/ ::' to describe the interval of last month")
 	flag.StringVar(&debugLevel, "d", "error", "Debug level (info,warn,debug)")
 	flag.BoolVar(&vOption, "v", false, "Get version")
 	flag.BoolVar(&openedOption, "opened", false, "only opened issues")
@@ -62,19 +66,20 @@ func main() {
 		os.Setenv("GITLAB_URI", "https://gitlab.com")
 	}
 
-	// tz := os.Getenv("TZ")
-	tz := ""
-	dBegin, err := calcdatelib.CreateDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz, true, false)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	// if option -i , calculdate
+	if interval != "" {
+		tz := ""
+		dBegin, err = calcdatelib.CreateDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz, true, false)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		dEnd, err = calcdatelib.CreateDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz, false, true)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 	}
-	dEnd, err := calcdatelib.CreateDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz, false, true)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	// 2022-06-24T08:00:00Z
 	if groupId == 0 && projectId == 0 {
 		// Try to find git repository and project
 		gitFolder, err := findGitRepository()
@@ -98,18 +103,21 @@ func main() {
 	// fieldFilterAfter := "updated_after"
 	// fieldFilterBefore := "updated_before"
 	n := gitlabissues.NewRequestIssues()
-	n.SetFilterAfter("updated_after", dBegin)
-	n.SetFilterBefore("updated_before", dEnd)
+	if interval != "" {
+		// by default, filter date is on updated time
+		n.SetFilterAfter("updated_after", dBegin)
+		n.SetFilterBefore("updated_before", dEnd)
+		if createdAtOption {
+			n.SetFilterAfter("created_after", dBegin)
+			n.SetFilterBefore("created_before", dEnd)
+		}
+	}
 
 	if openedOption {
 		n.SetOptionOpenedIssues()
 	}
 	if closedOption {
 		n.SetOptionClosedIssues()
-	}
-	if createdAtOption {
-		n.SetFilterAfter("created_after", dBegin)
-		n.SetFilterBefore("created_before", dEnd)
 	}
 
 	if projectId != 0 {
