@@ -69,16 +69,20 @@ func main() {
 	// if option -i , calculdate
 	if interval != "" {
 		tz := ""
-		dBegin, err = calcdatelib.CreateDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz, true, false)
+		dbegin, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		dEnd, err = calcdatelib.CreateDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz, false, true)
+		dbegin.SetBeginDate()
+		dBegin = dbegin.Time()
+		dend, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+		dend.SetEndDate()
+		dEnd = dend.Time()
 	}
 	if groupId == 0 && projectId == 0 {
 		// Try to find git repository and project
@@ -131,7 +135,7 @@ func main() {
 		logrus.Errorln(err.Error())
 		os.Exit(1)
 	}
-	issues.PrintOneLine(true)
+	issues.PrintIssues(true)
 }
 
 func initTrace(debugLevel string) {

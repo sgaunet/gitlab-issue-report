@@ -10,7 +10,7 @@ import (
 
 type Issues []Issue
 
-func (i Issues) PrintOneLine(printHeader bool) {
+func (i Issues) PrintIssues(printHeader bool) {
 	if printHeader {
 		fmt.Printf("%-70s %10s %-25s %-25s\n", "Title", "State", "Created At", "Updated At")
 	}
