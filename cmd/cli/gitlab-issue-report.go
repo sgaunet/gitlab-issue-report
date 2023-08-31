@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/sgaunet/calcdate/calcdatelib"
-	gitlabissues "github.com/sgaunet/gitlab-issue-report/gitlabIssues"
+	gitlabissues "github.com/sgaunet/gitlab-issue-report/pkg/gitlabIssues"
 	"github.com/sirupsen/logrus"
 )
 

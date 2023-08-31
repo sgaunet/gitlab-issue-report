@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 
-	"github.com/sgaunet/gitlab-issue-report/gitlabRequest"
+	"github.com/sgaunet/gitlab-issue-report/pkg/gitlabRequest"
 )
 
 type project struct {

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sgaunet/gitlab-issue-report/gitlabRequest"
+	"github.com/sgaunet/gitlab-issue-report/pkg/gitlabRequest"
 )
 
 type RequestIssues struct {

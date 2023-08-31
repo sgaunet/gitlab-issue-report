@@ -20,7 +20,7 @@ builds:
     goarm:
       - "6"
       - "7"
-    # dir: src
+    dir: cmd/cli
     id: lin
 
 archives:
