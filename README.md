@@ -41,3 +41,40 @@ Usage of gitlab-issue-report:
 
 * [Gitlab Issue API](https://docs.gitlab.com/ee/api/issues.html)
 
+# Development
+
+This project is using :
+
+* golang
+* [task for development](https://taskfile.dev/#/)
+* docker
+* [docker buildx](https://github.com/docker/buildx)
+* docker manifest
+* [goreleaser](https://goreleaser.com/)
+* [venom](https://github.com/ovh/venom) : Tests
+* [pre-commit](https://pre-commit.com/)
+
+There are hooks executed in the precommit stage. Once the project cloned on your disk, please install pre-commit:
+
+```
+brew install pre-commit
+```
+
+Install tools:
+
+```
+task install-prereq
+```
+
+And install the hooks:
+
+```
+task install-pre-commit
+```
+
+If you like to launch manually the pre-commmit hook:
+
+```
+task pre-commit
+```
+
