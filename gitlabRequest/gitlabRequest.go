@@ -2,7 +2,7 @@ package gitlabRequest
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 )
@@ -22,7 +22,7 @@ func Request(uri string) (resp *http.Response, body []byte, err error) {
 	if err != nil {
 		return
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
 		return
