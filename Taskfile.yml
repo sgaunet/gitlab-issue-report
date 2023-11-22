@@ -6,18 +6,18 @@ vars:
 
 tasks:
   default:
+    desc: "List all tasks"
+    cmds:
+      - task -a
+
+  build:
+    desc: "Build the binary"
     cmds:
       - go mod download
       - CGO_ENABLED=0 go build .
-      - upx ./{{.BINFILE}}
-    # silent: true
-    sources:
-    - ./**/*
-    method: checksum
-    generates:
-      - "{{.BINFILE}}"
 
   install-prereq:
+    desc: "Install pre-requisites"
     cmds:
       - go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
       - go install github.com/go-critic/go-critic/cmd/gocritic@latest
@@ -30,26 +30,21 @@ tasks:
 
   # install hooks
   install-pre-commit:
+    desc: "Install pre-commit hooks"
     cmds:
       - pre-commit install
 
   pre-commit:
+    desc: "Run pre-commit hooks on all files"
     cmds:
       - pre-commit run --all-files
 
-  image:
-    deps: 
-    - default
-    sources:
-      - ./**/*
-    cmds:
-      - docker build . -t {{.IMG}}
-      - docker push {{.IMG}}
-
   snapshot:
+    desc: "Create a snapshot release"
     cmds:
       - GITLAB_TOKEN="" goreleaser --clean --snapshot
     
   release:
+    desc: "Create a release"
     cmds:
       - GITLAB_TOKEN="" goreleaser --clean
