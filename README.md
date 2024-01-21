@@ -1,3 +1,4 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/sgaunet/gitlab-issue-report)](https://goreportcard.com/report/github.com/sgaunet/gitlab-issue-report)
 
 # gitlab-issue-report
 
