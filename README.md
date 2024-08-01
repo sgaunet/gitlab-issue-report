@@ -1,4 +1,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sgaunet/gitlab-issue-report)](https://goreportcard.com/report/github.com/sgaunet/gitlab-issue-report)
+[![GitHub release](https://img.shields.io/github/release/sgaunet/gitlab-issue-report.svg)](https://github.com/sgaunet/gitlab-issue-report/releases/latest)
+![GitHub Downloads](https://img.shields.io/github/downloads/sgaunet/gitlab-issue-report/total)
+[![Maintainability](https://api.codeclimate.com/v1/badges/b69f230e0040bb521f83/maintainability)](https://codeclimate.com/github/sgaunet/gitlab-issue-report/maintainability)
+[![GoDoc](https://godoc.org/github.com/sgaunet/gitlab-issue-report?status.svg)](https://godoc.org/github.com/sgaunet/gitlab-issue-report)
+[![License](https://img.shields.io/github/license/sgaunet/gitlab-issue-report.svg)](LICENSE)
 
 # gitlab-issue-report
 
