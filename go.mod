@@ -1,6 +1,6 @@
 module github.com/sgaunet/gitlab-issue-report
 
-go 1.18
+go 1.22
 
 require (
 	github.com/olekukonko/tablewriter v0.0.5
@@ -10,8 +10,8 @@ require (
 )
 
 require (
-	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/stretchr/testify v1.8.2 // indirect
-	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 )
