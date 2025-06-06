@@ -28,7 +28,7 @@ func truncateStr(str string, length int) string {
 
 func (i Issues) PrintTab() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Title", "State", "CreatedAt", "UpdatedAt"})
+	table.Header([]string{"Title", "State", "CreatedAt", "UpdatedAt"})
 
 	for _, v := range i {
 		t := []string{v.Title, v.State, v.CreatedAt.Format(time.RFC3339), v.UpdateAt.Format(time.RFC3339)}
