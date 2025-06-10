@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/sgaunet/calcdate/calcdatelib"
-	gitlabissues "github.com/sgaunet/gitlab-issue-report/pkg/gitlabIssues"
+	"github.com/sgaunet/gitlab-issue-report/internal/core"
+	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,6 +27,7 @@ func main() {
 		openedOption    bool
 		closedOption    bool
 		createdAtOption bool
+		updatedAtOption bool
 		vOption         bool
 		dBegin          time.Time
 		dEnd            time.Time
@@ -104,38 +106,44 @@ func main() {
 		projectId = project.Id
 	}
 
-	// fieldFilterAfter := "updated_after"
-	// fieldFilterBefore := "updated_before"
-	n := gitlabissues.NewRequestIssues()
-	if interval != "" {
-		// by default, filter date is on updated time
-		n.SetFilterAfter("updated_after", dBegin)
-		n.SetFilterBefore("updated_before", dEnd)
-		if createdAtOption {
-			n.SetFilterAfter("created_after", dBegin)
-			n.SetFilterBefore("created_before", dEnd)
-		}
-	}
-
-	if openedOption {
-		n.SetOptionOpenedIssues()
-	}
-	if closedOption {
-		n.SetOptionClosedIssues()
-	}
-
-	if projectId != 0 {
-		n.SetProjectId(projectId)
-	}
-	if groupId != 0 {
-		n.SetGroupId(groupId)
-	}
-	issues, err := n.GetIssues()
+	app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"))
 	if err != nil {
 		logrus.Errorln(err.Error())
 		os.Exit(1)
 	}
-	issues.PrintIssues(true)
+
+	if createdAtOption && updatedAtOption {
+		logrus.Errorln("createdAt and updatedAt options are incompatible")
+		os.Exit(1)
+	}
+
+	var options []core.GetIssuesOption
+	if projectId != 0 {
+		options = append(options, core.WithProjectID(projectId))
+	}
+	if groupId != 0 {
+		options = append(options, core.WithGroupID(groupId))
+	}
+	if createdAtOption {
+		options = append(options, core.WithFilterCreatedAt(dBegin, dEnd))
+	}
+	if updatedAtOption {
+		options = append(options, core.WithFilterUpdatedAt(dBegin, dEnd))
+	}
+	if openedOption && !closedOption {
+		options = append(options, core.WithOpenedIssues())
+	}
+	if closedOption && !openedOption {
+		options = append(options, core.WithClosedIssues())
+	}
+
+	issues, err := app.GetIssues(options...)
+	if err != nil {
+		logrus.Errorln(err.Error())
+		os.Exit(1)
+	}
+	render.PrintIssues(issues, true)
+	os.Exit(0)
 }
 
 func initTrace(debugLevel string) {

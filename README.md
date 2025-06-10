@@ -46,6 +46,7 @@ Usage of gitlab-issue-report:
 # Infos
 
 * [Gitlab Issue API](https://docs.gitlab.com/ee/api/issues.html)
+* This project uses the [official GitLab API client library for Go](https://gitlab.com/gitlab-org/api/client-go)
 
 # Development
 
