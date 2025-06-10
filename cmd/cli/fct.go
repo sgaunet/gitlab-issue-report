@@ -1,17 +1,21 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gopkg.in/ini.v1"
-
-	"github.com/sgaunet/gitlab-issue-report/pkg/gitlabRequest"
 )
+
+// stringPtr returns a pointer to the string value passed in.
+func stringPtr(v string) *string {
+	return &v
+}
 
 type project struct {
 	Id            int    `json:"id"`
@@ -25,27 +29,39 @@ func findProject(remoteOrigin string) (project, error) {
 	projectName = strings.ReplaceAll(projectName, ".git", "")
 	log.Infof("Try to find project %s in %s\n", projectName, os.Getenv("GITLAB_URI"))
 
-	_, res, err := gitlabRequest.Request("search?scope=projects&search=" + projectName)
-	if err != nil {
-		log.Errorln(err.Error())
-		os.Exit(1)
+	gitlabToken := os.Getenv("GITLAB_TOKEN")
+	gitlabURI := os.Getenv("GITLAB_URI")
+	if gitlabToken == "" {
+		return project{}, errors.New("GITLAB_TOKEN environment variable not set")
+	}
+	if gitlabURI == "" {
+		gitlabURI = "https://gitlab.com"
+		log.Warnf("GITLAB_URI not set, defaulting to %s", gitlabURI)
 	}
 
-	var p []project
-	err = json.Unmarshal(res, &p)
+	git, err := gitlab.NewClient(gitlabToken, gitlab.WithBaseURL(gitlabURI))
 	if err != nil {
-		log.Errorln(err.Error())
-		os.Exit(1)
+		log.Errorf("Failed to create GitLab client: %v", err)
+		return project{}, fmt.Errorf("failed to create GitLab client: %w", err)
 	}
 
-	for _, project := range p {
-		log.Debugln(project.Name)
-		log.Debugln(project.Id)
-		log.Debugln(project.HttpUrlToRepo)
-		log.Debugln(project.SshUrlToRepo)
+	searchOpts := &gitlab.SearchOptions{}
+	// The scope is implicit in the Projects method call
+	foundProjects, _, err := git.Search.Projects(projectName, searchOpts)
+	if err != nil {
+		log.Errorf("Failed to search for project '%s': %v", projectName, err)
+		return project{}, fmt.Errorf("failed to search for project '%s': %w", projectName, err)
+	}
 
-		if project.SshUrlToRepo == remoteOrigin {
-			return project, err
+	for _, p := range foundProjects {
+		log.Debugf("Found project: Name=%s, ID=%d, SSHURL=%s, HTTPURL=%s", p.Name, p.ID, p.SSHURLToRepo, p.HTTPURLToRepo)
+		if p.SSHURLToRepo == remoteOrigin {
+			return project{
+				Id:            p.ID,
+				Name:          p.Name,
+				SshUrlToRepo:  p.SSHURLToRepo,
+				HttpUrlToRepo: p.HTTPURLToRepo,
+			}, nil
 		}
 	}
 	return project{}, errors.New("project not found")
