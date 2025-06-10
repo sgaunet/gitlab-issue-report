@@ -1,3 +1,4 @@
 dist
 .task
 gitlab-issue-report
+/.devbox
