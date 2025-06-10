@@ -1,6 +1,8 @@
+// Package main implements the gitlab-issue-report command-line tool
 package main
 
 import (
+
 	"errors"
 	"fmt"
 	"os"
@@ -12,16 +14,20 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// stringPtr returns a pointer to the string value passed in.
-func stringPtr(v string) *string {
-	return &v
-}
+// Define static error variables.
+var (
+	errTokenNotSet     = errors.New("GITLAB_TOKEN environment variable not set")
+	errProjectNotFound = errors.New("project not found")
+	errGitNotFound     = errors.New(".git not found")
+)
+
+
 
 type project struct {
-	Id            int    `json:"id"`
+	ID            int    `json:"id"`
 	Name          string `json:"name"`
-	SshUrlToRepo  string `json:"ssh_url_to_repo"`
-	HttpUrlToRepo string `json:"http_url_to_repo"`
+	SSHURLToRepo  string `json:"sshUrlToRepo"`
+	HTTPURLToRepo string `json:"httpUrlToRepo"`
 }
 
 func findProject(remoteOrigin string) (project, error) {
@@ -32,7 +38,7 @@ func findProject(remoteOrigin string) (project, error) {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
 	gitlabURI := os.Getenv("GITLAB_URI")
 	if gitlabToken == "" {
-		return project{}, errors.New("GITLAB_TOKEN environment variable not set")
+		return project{}, fmt.Errorf("gitlab token not available: %w", errTokenNotSet)
 	}
 	if gitlabURI == "" {
 		gitlabURI = "https://gitlab.com"
@@ -57,20 +63,20 @@ func findProject(remoteOrigin string) (project, error) {
 		log.Debugf("Found project: Name=%s, ID=%d, SSHURL=%s, HTTPURL=%s", p.Name, p.ID, p.SSHURLToRepo, p.HTTPURLToRepo)
 		if p.SSHURLToRepo == remoteOrigin {
 			return project{
-				Id:            p.ID,
+				ID:            p.ID,
 				Name:          p.Name,
-				SshUrlToRepo:  p.SSHURLToRepo,
-				HttpUrlToRepo: p.HTTPURLToRepo,
+				SSHURLToRepo:  p.SSHURLToRepo,
+				HTTPURLToRepo: p.HTTPURLToRepo,
 			}, nil
 		}
 	}
-	return project{}, errors.New("project not found")
+	return project{}, fmt.Errorf("gitlab project lookup failed: %w", errProjectNotFound)
 }
 
 func findGitRepository() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	for cwd != "/" {
@@ -78,14 +84,15 @@ func findGitRepository() (string, error) {
 		stat, err := os.Stat(cwd + string(os.PathSeparator) + ".git")
 		if err == nil {
 			if stat.IsDir() {
-				return cwd, err
+				return cwd, nil // Found git directory
 			}
 		}
 		cwd = filepath.Dir(cwd)
 	}
-	return "", errors.New(".git not found")
+	return "", fmt.Errorf("git repository not found: %w", errGitNotFound)
 }
 
+// GetRemoteOrigin retrieves the remote origin URL from the git configuration file.
 func GetRemoteOrigin(gitConfigFile string) string {
 	cfg, err := ini.Load(gitConfigFile)
 	if err != nil {
