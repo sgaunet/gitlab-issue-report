@@ -10,7 +10,7 @@ builds:
   - env:
       - CGO_ENABLED=0
     ldflags:
-      - -X main.version={{.Version}}
+      - -X github.com/sgaunet/gitlab-issue-report/cmd.version={{.Version}}
     goos:
       - linux
       - darwin
@@ -21,7 +21,7 @@ builds:
     goarm:
       - "6"
       - "7"
-    dir: cmd/cli
+    dir: .
     id: lin
 
 archives:
