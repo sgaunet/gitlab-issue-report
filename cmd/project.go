@@ -1,6 +1,8 @@
+// Package cmd provides commands for gitlab-issue-report.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,38 +16,44 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
-// projectCmd represents the project command
+// projectCmd represents the project command.
+var (
+	errGitRepositoryNotFound    = errors.New("git repository not found")
+	errGitlabTokenNotAvailable = errors.New("gitlab token not available")
+	errGitlabProjectNotFound   = errors.New("gitlab project not found")
+)
+
 var projectCmd = &cobra.Command{
 	Use:   "project",
-	Short: "Get issues of a GitLab project",
+	Short: "Get issues of a GitLab project.",
 	Long:  `Get issues of a GitLab project by ID or automatically detect from git repository.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Initialize logging
+	Run: func(_ *cobra.Command, _ []string) {
+		// Initialize logging.
 		initTrace(debugLevel)
 
-		// Setup environment
+		// Setup environment.
 		setupEnvironment()
 
-		// Parse interval if provided
+		// Parse interval if provided.
 		beginTime, endTime := parseInterval(interval)
 
-		// Find project ID if not specified
+		// Find project ID if not specified.
 		finalProjectID := projectID
 		if finalProjectID == 0 {
 			finalProjectID = findProjectID()
 		}
 
-		// Create GitLab client
+		// Create GitLab client.
 		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"))
 		if err != nil {
 			logrus.Errorln(err.Error())
 			os.Exit(1)
 		}
 
-		// Build issue retrieval options
+		// Build issue retrieval options.
 		options := buildIssueOptions(finalProjectID, 0, beginTime, endTime)
 
-		// Get and display issues
+		// Get and display issues.
 		issues, err := app.GetIssues(options...)
 		if err != nil {
 			logrus.Errorln(err.Error())
@@ -56,16 +64,16 @@ var projectCmd = &cobra.Command{
 	},
 }
 
-// findProjectID attempts to determine the project ID if not specified
+// findProjectID attempts to determine the project ID if not specified.
 func findProjectID() int {
-	// Try to find git repository and project
+	// Try to find git repository and project.
 	gitFolder, err := findGitRepository()
 	if err != nil {
 		logrus.Errorf("Folder .git not found")
 		os.Exit(1)
 	}
 
-	// Get remote origin from git config
+	// Get remote origin from git config.
 	configPath := gitFolder + string(os.PathSeparator) + ".git" + string(os.PathSeparator) + "config"
 	remoteOrigin := getRemoteOrigin(configPath)
 
@@ -80,11 +88,11 @@ func findProjectID() int {
 	return project.ID
 }
 
-// findGitRepository locates the git repository in the current or parent directories
+// findGitRepository locates the git repository in the current or parent directories.
 func findGitRepository() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
+		return "", fmt.Errorf("%w", errGitRepositoryNotFound)
 	}
 
 	for cwd != "/" {
@@ -92,15 +100,15 @@ func findGitRepository() (string, error) {
 		stat, err := os.Stat(cwd + string(os.PathSeparator) + ".git")
 		if err == nil {
 			if stat.IsDir() {
-				return cwd, nil // Found git directory
+				return cwd, nil // Found git directory.
 			}
 		}
 		cwd = filepath.Dir(cwd)
 	}
-	return "", fmt.Errorf("git repository not found")
+	return "", fmt.Errorf("%w", errGitRepositoryNotFound)
 }
 
-// getRemoteOrigin retrieves the remote origin URL from the git configuration file
+// getRemoteOrigin retrieves the remote origin URL from the git configuration file.
 func getRemoteOrigin(gitConfigFile string) string {
 	cfg, err := ini.Load(gitConfigFile)
 	if err != nil {
@@ -120,7 +128,7 @@ type project struct {
 	HTTPURLToRepo string `json:"httpUrlToRepo"`
 }
 
-// findProject searches for a project in GitLab based on the remote origin URL
+// findProject searches for a project in GitLab based on the remote origin URL.
 func findProject(remoteOrigin string) (project, error) {
 	projectName := filepath.Base(remoteOrigin)
 	projectName = strings.ReplaceAll(projectName, ".git", "")
@@ -129,7 +137,7 @@ func findProject(remoteOrigin string) (project, error) {
 	gitlabToken := os.Getenv("GITLAB_TOKEN")
 	gitlabURI := os.Getenv("GITLAB_URI")
 	if gitlabToken == "" {
-		return project{}, fmt.Errorf("gitlab token not available")
+		return project{}, fmt.Errorf("%w", errGitlabTokenNotAvailable)
 	}
 	if gitlabURI == "" {
 		gitlabURI = "https://gitlab.com"
@@ -160,5 +168,5 @@ func findProject(remoteOrigin string) (project, error) {
 			}, nil
 		}
 	}
-	return project{}, fmt.Errorf("gitlab project not found")
+	return project{}, fmt.Errorf("%w", errGitlabProjectNotFound)
 }

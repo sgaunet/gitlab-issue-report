@@ -15,7 +15,7 @@ var projectID int
 var groupID int
 var debugLevel string
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "gitlab-issue-report",
 	Short: "Tool to get issues of a gitlab project or group.",

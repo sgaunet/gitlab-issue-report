@@ -1,3 +1,4 @@
+// Package cmd provides commands for gitlab-issue-report.
 package cmd
 
 import (
@@ -9,16 +10,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// groupCmd represents the group command
+// groupCmd represents the group command.
 var groupCmd = &cobra.Command{
 	Use:   "group",
 	Short: "Get issues of a GitLab group",
 	Long:  `Get issues of a GitLab group by ID.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		// Check if group ID is provided
 		if groupID == 0 {
 			logrus.Errorln("Group ID is required. Please provide it with the --id flag.")
-			cmd.Help()
+			err := cmd.Help()
+			if err != nil {
+				logrus.Errorln("Failed to display help:", err)
+			}
 			os.Exit(1)
 		}
 

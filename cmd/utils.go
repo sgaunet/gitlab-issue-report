@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// setupEnvironment ensures required environment variables are set
+// setupEnvironment ensures required environment variables are set.
 func setupEnvironment() {
 	// Check GitLab token
 	if len(os.Getenv("GITLAB_TOKEN")) == 0 {
@@ -27,7 +27,7 @@ func setupEnvironment() {
 	}
 }
 
-// parseInterval parses the interval flag and returns the begin and end times
+// parseInterval parses the interval flag and returns the begin and end times.
 func parseInterval(interval string) (time.Time, time.Time) {
 	var beginTime, endTime time.Time
 	if interval == "" {
@@ -54,7 +54,7 @@ func parseInterval(interval string) (time.Time, time.Time) {
 	return beginTime, endTime
 }
 
-// buildIssueOptions creates the options for retrieving issues
+// buildIssueOptions creates the options for retrieving issues.
 func buildIssueOptions(projectID, groupID int, beginTime, endTime time.Time) []core.GetIssuesOption {
 	var options []core.GetIssuesOption
 	
@@ -70,7 +70,7 @@ func buildIssueOptions(projectID, groupID int, beginTime, endTime time.Time) []c
 	return options
 }
 
-// addIDOptions adds project or group ID options
+// addIDOptions adds project or group ID options.
 func addIDOptions(options []core.GetIssuesOption, projectID, groupID int) []core.GetIssuesOption {
 	if projectID != 0 {
 		options = append(options, core.WithProjectID(projectID))
@@ -81,7 +81,7 @@ func addIDOptions(options []core.GetIssuesOption, projectID, groupID int) []core
 	return options
 }
 
-// addDateFilterOptions adds date filter options based on configuration
+// addDateFilterOptions adds date filter options based on configuration.
 func addDateFilterOptions(
 	options []core.GetIssuesOption,
 	beginTime, endTime time.Time,
@@ -96,7 +96,7 @@ func addDateFilterOptions(
 	return options
 }
 
-// addStatusFilterOptions adds status filter options based on configuration
+// addStatusFilterOptions adds status filter options based on configuration.
 func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOption {
 	if openedOption && !closedOption {
 		options = append(options, core.WithOpenedIssues())
@@ -107,7 +107,7 @@ func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOpti
 	return options
 }
 
-// initTrace initializes the logging based on debug level
+// initTrace initializes the logging based on debug level.
 func initTrace(debugLevel string) {
 	// Output to stdout instead of the default stderr
 	logrus.SetOutput(os.Stdout)
