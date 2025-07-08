@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
-	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -52,6 +51,6 @@ var groupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		render.PrintIssues(issues, true)
+		renderIssues(issues)
 	},
 }
