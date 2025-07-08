@@ -10,7 +10,7 @@
 
 # gitlab-issue-report
 
-Tool to report issues of a gitlab project/group.
+Tool to report issues of a gitlab project/group with multiple output formats (plain text, table, markdown).
 
 # Install 
 
@@ -35,6 +35,7 @@ Project Command Flags:
   -d, --d string          Debug level (info,warn,debug) (default "error")
   -i, --i string          Interval, ex '/-1/ ::' to describe the interval of last month
   -p, --id int            Project ID to get issues from
+  -m, --markdown          Output in markdown format
   -o, --opened            Only opened issues
   -u, --updatedAt         Issues filtered with updated date
 
@@ -44,6 +45,7 @@ Group Command Flags:
   -d, --d string          Debug level (info,warn,debug) (default "error")
   -i, --i string          Interval, ex '/-1/ ::' to describe the interval of last month
   -g, --id int            Group ID to get issues from
+  -m, --markdown          Output in markdown format
   -o, --opened            Only opened issues
   -u, --updatedAt         Issues filtered with updated date
 ```
@@ -51,11 +53,40 @@ Group Command Flags:
 ### Examples
 
 ```bash
-# Get all issues from a project
+# Get all issues from a project (default plain text output)
 gitlab-issue-report project -p 12345
 
 # Get closed issues from a group created in the last month
 gitlab-issue-report group -g 67890 -c -r -i "/-1/ ::"
+
+# Get issues with markdown output for easy sharing
+gitlab-issue-report project -p 12345 --markdown
+
+# Get opened issues from a group in markdown format
+gitlab-issue-report group -g 67890 -o -m
+
+# Get issues filtered by creation date in markdown format
+gitlab-issue-report project -p 12345 --createdAt --markdown -i "/-1/ ::"
+```
+
+### Output Formats
+
+The tool supports three output formats:
+
+1. **Plain Text** (default): Simple columnar output
+2. **Table**: Formatted table with borders using tablewriter
+3. **Markdown**: Markdown table format perfect for documentation and reports
+
+#### Markdown Output Example
+
+```markdown
+# GitLab Issues Report
+
+| Title | State | Created At | Updated At |
+|-------|-------|------------|------------|
+| Fix authentication bug | opened | 2024-01-15 | 2024-01-16 |
+| Add new feature | closed | 2024-01-10 | 2024-01-14 |
+| Update documentation | opened | 2024-01-12 | 2024-01-13 |
 ```
 
 ## Configuration
@@ -104,13 +135,34 @@ If you like to launch manually the pre-commmit hook:
 task pre-commit
 ```
 
+### Testing
+
+The project includes comprehensive tests for all functionality:
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with verbose output
+go test ./... -v
+
+# Run specific package tests
+go test ./internal/render -v
+go test ./cmd -v
+
+# Run linter
+task linter
+```
+
+Tests follow black box testing principles, focusing on public interfaces and ensuring all output formats work correctly.
+
 ## Project Status
 
-🟨 **Maintenance Mode**: This project is used by me to get a summary of what I've done on some projects every month or every sprint. I don't plan to add new features or to improve the tool a lot, it's a side project with low priority.
+🟨 **Maintenance Mode**: This project is used by me to get a summary of what I've done on some projects every month or every sprint. While it's a side project with low priority, it has recently been enhanced with markdown output support.
 
 While we are committed to keeping the project's dependencies up-to-date and secure, please note the following:
 
-- New features are unlikely to be added
+- New features are unlikely to be added (though markdown output was recently added)
 - Bug fixes will be addressed, but not necessarily promptly
 - Security updates will be prioritized
 

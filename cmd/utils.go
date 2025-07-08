@@ -7,7 +7,9 @@ import (
 
 	"github.com/sgaunet/calcdate/calcdatelib"
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
+	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 // setupEnvironment ensures required environment variables are set.
@@ -121,5 +123,21 @@ func initTrace(debugLevel string) {
 		logrus.SetLevel(logrus.ErrorLevel)
 	default:
 		logrus.SetLevel(logrus.DebugLevel)
+	}
+}
+
+// renderIssues renders the issues based on the markdown flag.
+func renderIssues(issues []*gitlab.Issue) {
+	var renderer render.Renderer
+	
+	if markdownOutput {
+		renderer = render.NewMarkdownRenderer()
+	} else {
+		renderer = render.NewPlainRenderer(true)
+	}
+	
+	if err := renderer.Render(issues, os.Stdout); err != nil {
+		logrus.Errorf("Failed to render issues: %v", err)
+		os.Exit(1)
 	}
 }

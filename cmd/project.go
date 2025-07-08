@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
-	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
@@ -60,7 +59,7 @@ var projectCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		render.PrintIssues(issues, true)
+		renderIssues(issues)
 	},
 }
 
