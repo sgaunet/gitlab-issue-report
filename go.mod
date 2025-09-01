@@ -1,12 +1,12 @@
 module github.com/sgaunet/gitlab-issue-report
 
-go 1.23.0
+go 1.24
 
 toolchain go1.24.3
 
 require (
 	github.com/olekukonko/tablewriter v1.0.9
-	github.com/sgaunet/calcdate v1.5.0
+	github.com/sgaunet/calcdate v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	gitlab.com/gitlab-org/api/client-go v0.137.0
