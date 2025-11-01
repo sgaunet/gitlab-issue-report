@@ -9,7 +9,7 @@ require (
 	github.com/sgaunet/calcdate v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.1
-	gitlab.com/gitlab-org/api/client-go v0.148.1
+	gitlab.com/gitlab-org/api/client-go v0.157.1
 	gopkg.in/ini.v1 v1.67.0
 )
 
