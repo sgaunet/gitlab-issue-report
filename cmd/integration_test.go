@@ -69,8 +69,8 @@ func TestRenderIssues(t *testing.T) {
 func TestBuildIssueOptions(t *testing.T) {
 	tests := []struct {
 		name             string
-		projectID        int
-		groupID          int
+		projectID        int64
+		groupID          int64
 		closedOption     bool
 		openedOption     bool
 		createdAtOption  bool

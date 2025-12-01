@@ -19,7 +19,7 @@ func setupEnvironment() {
 		logrus.Errorf("Set GITLAB_TOKEN environment variable")
 		os.Exit(1)
 	}
-	
+
 	// Set default GitLab URI if not provided
 	if len(os.Getenv("GITLAB_URI")) == 0 {
 		if err := os.Setenv("GITLAB_URI", "https://gitlab.com"); err != nil {
@@ -35,7 +35,7 @@ func parseInterval(interval string) (time.Time, time.Time) {
 	if interval == "" {
 		return time.Time{}, time.Time{}
 	}
-	
+
 	tz := ""
 	dbegin, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 	if err != nil {
@@ -44,7 +44,7 @@ func parseInterval(interval string) (time.Time, time.Time) {
 	}
 	dbegin.SetBeginDate()
 	beginTime = dbegin.Time()
-	
+
 	dend, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -52,28 +52,28 @@ func parseInterval(interval string) (time.Time, time.Time) {
 	}
 	dend.SetEndDate()
 	endTime = dend.Time()
-	
+
 	return beginTime, endTime
 }
 
 // buildIssueOptions creates the options for retrieving issues.
-func buildIssueOptions(projectID, groupID int, beginTime, endTime time.Time) []core.GetIssuesOption {
+func buildIssueOptions(projectID, groupID int64, beginTime, endTime time.Time) []core.GetIssuesOption {
 	var options []core.GetIssuesOption
-	
+
 	// Add ID options
 	options = addIDOptions(options, projectID, groupID)
-	
+
 	// Add date filter options
 	options = addDateFilterOptions(options, beginTime, endTime)
-	
+
 	// Add status filter options
 	options = addStatusFilterOptions(options)
-	
+
 	return options
 }
 
 // addIDOptions adds project or group ID options.
-func addIDOptions(options []core.GetIssuesOption, projectID, groupID int) []core.GetIssuesOption {
+func addIDOptions(options []core.GetIssuesOption, projectID, groupID int64) []core.GetIssuesOption {
 	if projectID != 0 {
 		options = append(options, core.WithProjectID(projectID))
 	}
@@ -129,13 +129,13 @@ func initTrace(debugLevel string) {
 // renderIssues renders the issues based on the markdown flag.
 func renderIssues(issues []*gitlab.Issue) {
 	var renderer render.Renderer
-	
+
 	if markdownOutput {
 		renderer = render.NewMarkdownRenderer()
 	} else {
 		renderer = render.NewPlainRenderer(true)
 	}
-	
+
 	if err := renderer.Render(issues, os.Stdout); err != nil {
 		logrus.Errorf("Failed to render issues: %v", err)
 		os.Exit(1)
