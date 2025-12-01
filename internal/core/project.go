@@ -19,8 +19,8 @@ const defaultPerPage = 100
 
 // GetIssues contains parameters for retrieving issues from GitLab.
 type GetIssues struct {
-	ProjectID             int
-	GroupID               int
+	ProjectID             int64
+	GroupID               int64
 	State                 string
 	FilterCreatedAtAfter  time.Time
 	FilterCreatedAtBefore time.Time
@@ -67,14 +67,14 @@ func WithFilterUpdatedAtBefore(filterUpdatedAtBefore time.Time) GetIssuesOption 
 }
 
 // WithProjectID sets the project ID for retrieving issues.
-func WithProjectID(projectID int) GetIssuesOption {
+func WithProjectID(projectID int64) GetIssuesOption {
 	return func(g *GetIssues) {
 		g.ProjectID = projectID
 	}
 }
 
 // WithGroupID sets the group ID for retrieving issues.
-func WithGroupID(groupID int) GetIssuesOption {
+func WithGroupID(groupID int64) GetIssuesOption {
 	return func(g *GetIssues) {
 		g.GroupID = groupID
 	}
@@ -185,10 +185,10 @@ func (a *App) getIssuesOfProject(g *GetIssues) ([]*gitlab.Issue, error) {
 			Page:    1,
 		},
 	}
-	
+
 	// Apply filters
 	applyIssueFilters(g, &listOptions)
-	
+
 	for {
 		issues, resp, err := a.gitlabClient.Issues.ListProjectIssues(g.ProjectID, &listOptions)
 		if err != nil {
@@ -211,7 +211,7 @@ func (a *App) getIssuesOfGroup(g *GetIssues) ([]*gitlab.Issue, error) {
 			Page:    1,
 		},
 	}
-	
+
 	// Apply filters
 	applyIssueFilters(g, &listOptions)
 

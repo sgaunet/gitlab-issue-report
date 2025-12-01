@@ -11,8 +11,8 @@ var openedOption bool
 var createdAtOption bool
 var updatedAtOption bool
 var interval string
-var projectID int
-var groupID int
+var projectID int64
+var groupID int64
 var debugLevel string
 var markdownOutput bool
 
@@ -40,7 +40,7 @@ func init() {
 	projectCmd.Flags().BoolVarP(&openedOption, "opened", "o", false, "only opened issues")
 	projectCmd.Flags().BoolVarP(&createdAtOption, "createdAt", "r", false, "issues filtered with created date")
 	projectCmd.Flags().BoolVarP(&updatedAtOption, "updatedAt", "u", false, "issues filtered with updated date")
-	projectCmd.Flags().IntVarP(&projectID, "id", "p", 0, "Project ID to get issues from")
+	projectCmd.Flags().Int64VarP(&projectID, "id", "p", 0, "Project ID to get issues from")
 	projectCmd.Flags().BoolVarP(&markdownOutput, "markdown", "m", false, "output in markdown format")
 	rootCmd.AddCommand(projectCmd)
 
@@ -50,7 +50,7 @@ func init() {
 	groupCmd.Flags().BoolVarP(&openedOption, "opened", "o", false, "only opened issues")
 	groupCmd.Flags().BoolVarP(&createdAtOption, "createdAt", "r", false, "issues filtered with created date")
 	groupCmd.Flags().BoolVarP(&updatedAtOption, "updatedAt", "u", false, "issues filtered with updated date")
-	groupCmd.Flags().IntVarP(&groupID, "id", "g", 0, "Group ID to get issues from")
+	groupCmd.Flags().Int64VarP(&groupID, "id", "g", 0, "Group ID to get issues from")
 	groupCmd.Flags().BoolVarP(&markdownOutput, "markdown", "m", false, "output in markdown format")
 	rootCmd.AddCommand(groupCmd)
 }

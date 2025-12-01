@@ -11,13 +11,13 @@ import (
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/ini.v1"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+	"gopkg.in/ini.v1"
 )
 
 // projectCmd represents the project command.
 var (
-	errGitRepositoryNotFound    = errors.New("git repository not found")
+	errGitRepositoryNotFound   = errors.New("git repository not found")
 	errGitlabTokenNotAvailable = errors.New("gitlab token not available")
 	errGitlabProjectNotFound   = errors.New("gitlab project not found")
 )
@@ -64,7 +64,7 @@ var projectCmd = &cobra.Command{
 }
 
 // findProjectID attempts to determine the project ID if not specified.
-func findProjectID() int {
+func findProjectID() int64 {
 	// Try to find git repository and project.
 	gitFolder, err := findGitRepository()
 	if err != nil {
@@ -121,7 +121,7 @@ func getRemoteOrigin(gitConfigFile string) string {
 }
 
 type project struct {
-	ID            int    `json:"id"`
+	ID            int64  `json:"id"`
 	Name          string `json:"name"`
 	SSHURLToRepo  string `json:"sshUrlToRepo"`
 	HTTPURLToRepo string `json:"httpUrlToRepo"`
