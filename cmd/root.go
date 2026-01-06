@@ -15,6 +15,7 @@ var projectID int64
 var groupID int64
 var debugLevel string
 var markdownOutput bool
+var mineOption bool
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
@@ -42,6 +43,7 @@ func init() {
 	projectCmd.Flags().BoolVarP(&updatedAtOption, "updatedAt", "u", false, "issues filtered with updated date")
 	projectCmd.Flags().Int64VarP(&projectID, "id", "p", 0, "Project ID to get issues from")
 	projectCmd.Flags().BoolVarP(&markdownOutput, "markdown", "m", false, "output in markdown format")
+	projectCmd.Flags().BoolVarP(&mineOption, "mine", "M", false, "only issues assigned to current user")
 	rootCmd.AddCommand(projectCmd)
 
 	groupCmd.Flags().StringVarP(&interval, "i", "i", "", "interval, ex '/-1/ ::' to describe the interval of last month")
@@ -52,5 +54,6 @@ func init() {
 	groupCmd.Flags().BoolVarP(&updatedAtOption, "updatedAt", "u", false, "issues filtered with updated date")
 	groupCmd.Flags().Int64VarP(&groupID, "id", "g", 0, "Group ID to get issues from")
 	groupCmd.Flags().BoolVarP(&markdownOutput, "markdown", "m", false, "output in markdown format")
+	groupCmd.Flags().BoolVarP(&mineOption, "mine", "M", false, "only issues assigned to current user")
 	rootCmd.AddCommand(groupCmd)
 }

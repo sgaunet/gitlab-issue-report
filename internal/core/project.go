@@ -26,6 +26,7 @@ type GetIssues struct {
 	FilterCreatedAtBefore time.Time
 	FilterUpdatedAtAfter  time.Time
 	FilterUpdatedAtBefore time.Time
+	AssigneeUsername      string
 }
 
 // GetIssuesOption is a functional option for configuring the GetIssues struct.
@@ -110,6 +111,13 @@ func WithClosedIssues() GetIssuesOption {
 	}
 }
 
+// WithAssigneeUsername filters issues by assignee username.
+func WithAssigneeUsername(assigneeUsername string) GetIssuesOption {
+	return func(g *GetIssues) {
+		g.AssigneeUsername = assigneeUsername
+	}
+}
+
 // GetIssues retrieves GitLab issues based on the provided options.
 func (a *App) GetIssues(opts ...GetIssuesOption) ([]*gitlab.Issue, error) {
 	g := &GetIssues{}
@@ -141,6 +149,10 @@ func applyIssueFilters(g *GetIssues, listOptions interface{}) {
 			&opts.UpdatedAfter,
 			&opts.UpdatedBefore,
 		)
+		// Add assignee username filter
+		if g.AssigneeUsername != "" {
+			opts.AssigneeUsername = &g.AssigneeUsername
+		}
 	case *gitlab.ListGroupIssuesOptions:
 		applyCommonFilters(
 			g,
@@ -150,6 +162,10 @@ func applyIssueFilters(g *GetIssues, listOptions interface{}) {
 			&opts.UpdatedAfter,
 			&opts.UpdatedBefore,
 		)
+		// Add assignee username filter
+		if g.AssigneeUsername != "" {
+			opts.AssigneeUsername = &g.AssigneeUsername
+		}
 	}
 }
 

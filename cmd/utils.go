@@ -29,6 +29,24 @@ func setupEnvironment() {
 	}
 }
 
+// getCurrentUsername fetches the username of the currently authenticated user.
+func getCurrentUsername() string {
+	gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(os.Getenv("GITLAB_URI")))
+	if err != nil {
+		logrus.Errorln("Failed to create GitLab client:", err.Error())
+		os.Exit(1)
+	}
+
+	user, _, err := gitlabClient.Users.CurrentUser()
+	if err != nil {
+		logrus.Errorln("Failed to fetch current user information:", err.Error())
+		os.Exit(1)
+	}
+
+	logrus.Debugf("Current user: %s (ID: %d)", user.Username, user.ID)
+	return user.Username
+}
+
 // parseInterval parses the interval flag and returns the begin and end times.
 func parseInterval(interval string) (time.Time, time.Time) {
 	var beginTime, endTime time.Time
@@ -69,6 +87,9 @@ func buildIssueOptions(projectID, groupID int64, beginTime, endTime time.Time) [
 	// Add status filter options
 	options = addStatusFilterOptions(options)
 
+	// Add assignee filter options
+	options = addAssigneeFilterOptions(options)
+
 	return options
 }
 
@@ -105,6 +126,15 @@ func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOpti
 	}
 	if closedOption && !openedOption {
 		options = append(options, core.WithClosedIssues())
+	}
+	return options
+}
+
+// addAssigneeFilterOptions adds assignee filter options based on mine flag.
+func addAssigneeFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOption {
+	if mineOption {
+		username := getCurrentUsername()
+		options = append(options, core.WithAssigneeUsername(username))
 	}
 	return options
 }
