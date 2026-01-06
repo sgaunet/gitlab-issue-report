@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/olekukonko/tablewriter"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
@@ -33,7 +32,7 @@ func NewPlainRenderer(printHeader bool) *PlainRenderer {
 // Render renders issues in plain text format.
 func (p *PlainRenderer) Render(issues []*gitlab.Issue, writer io.Writer) error {
 	if p.printHeader {
-		headerFormat := "%-70s %10s %-25s %-25s\n"
+		headerFormat := "%-70s %10s %-12s %-12s\n"
 		if _, err := fmt.Fprintf(writer, headerFormat, "Title", "State", "Created At", "Updated At"); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
@@ -41,9 +40,9 @@ func (p *PlainRenderer) Render(issues []*gitlab.Issue, writer io.Writer) error {
 	for idx := range issues {
 		title := truncateStr(issues[idx].Title, maxTitleLength)
 		state := issues[idx].State
-		createdAt := issues[idx].CreatedAt.Format("2006-01-02T15:04:05-0700")
-		updatedAt := issues[idx].UpdatedAt.Format("2006-01-02T15:04:05-0700")
-		rowFormat := "%-70s %10s %25s %25s\n"
+		createdAt := issues[idx].CreatedAt.Format("2006-01-02")
+		updatedAt := issues[idx].UpdatedAt.Format("2006-01-02")
+		rowFormat := "%-70s %10s %12s %12s\n"
 		if _, err := fmt.Fprintf(writer, rowFormat, title, state, createdAt, updatedAt); err != nil {
 			return fmt.Errorf("failed to write issue: %w", err)
 		}
@@ -65,7 +64,7 @@ func (t *TableRenderer) Render(issues []*gitlab.Issue, writer io.Writer) error {
 	table.Header([]string{"Title", "State", "CreatedAt", "UpdatedAt"})
 
 	for _, v := range issues {
-		row := []string{v.Title, v.State, v.CreatedAt.Format(time.RFC3339), v.UpdatedAt.Format(time.RFC3339)}
+		row := []string{v.Title, v.State, v.CreatedAt.Format("2006-01-02"), v.UpdatedAt.Format("2006-01-02")}
 		if err := table.Append(row); err != nil {
 			return fmt.Errorf("error appending table row: %w", err)
 		}
