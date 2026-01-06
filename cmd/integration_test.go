@@ -128,10 +128,14 @@ func TestBuildIssueOptions(t *testing.T) {
 			openedOption = tt.openedOption
 			createdAtOption = tt.createdAtOption
 			updatedAtOption = tt.updatedAtOption
-			
+
 			// Call the function and ensure it doesn't panic
-			options := buildIssueOptions(tt.projectID, tt.groupID, time.Time{}, time.Time{})
-			
+			options, err := buildIssueOptions(tt.projectID, tt.groupID, time.Time{}, time.Time{})
+
+			if err != nil {
+				t.Errorf("buildIssueOptions() error = %v", err)
+			}
+
 			if options == nil {
 				t.Error("buildIssueOptions() returned nil")
 			}
@@ -165,9 +169,13 @@ func TestParseInterval(t *testing.T) {
 					t.Errorf("parseInterval() panicked: %v", r)
 				}
 			}()
-			
-			beginTime, endTime := parseInterval(tt.interval)
-			
+
+			beginTime, endTime, err := parseInterval(tt.interval)
+
+			if err != nil {
+				t.Errorf("parseInterval() error = %v", err)
+			}
+
 			if tt.interval == "" {
 				if !beginTime.IsZero() || !endTime.IsZero() {
 					t.Error("parseInterval() should return zero times for empty interval")
@@ -218,33 +226,39 @@ func TestSetupEnvironment(t *testing.T) {
 	t.Run("with token and URI", func(t *testing.T) {
 		os.Setenv("GITLAB_TOKEN", "test-token")
 		os.Setenv("GITLAB_URI", "https://gitlab.example.com")
-		
+
 		// This should not panic or exit
 		defer func() {
 			if r := recover(); r != nil {
 				t.Errorf("setupEnvironment() panicked: %v", r)
 			}
 		}()
-		
-		setupEnvironment()
-		
+
+		err := setupEnvironment()
+		if err != nil {
+			t.Errorf("setupEnvironment() error = %v", err)
+		}
+
 		if os.Getenv("GITLAB_URI") != "https://gitlab.example.com" {
 			t.Error("setupEnvironment() should preserve existing GITLAB_URI")
 		}
 	})
-	
+
 	t.Run("with token but no URI", func(t *testing.T) {
 		os.Setenv("GITLAB_TOKEN", "test-token")
 		os.Unsetenv("GITLAB_URI")
-		
+
 		defer func() {
 			if r := recover(); r != nil {
 				t.Errorf("setupEnvironment() panicked: %v", r)
 			}
 		}()
-		
-		setupEnvironment()
-		
+
+		err := setupEnvironment()
+		if err != nil {
+			t.Errorf("setupEnvironment() error = %v", err)
+		}
+
 		if os.Getenv("GITLAB_URI") != "https://gitlab.com" {
 			t.Error("setupEnvironment() should set default GITLAB_URI")
 		}
