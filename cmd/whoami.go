@@ -14,26 +14,30 @@ var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
 	Short: "Display information about the authenticated GitLab user",
 	Long:  `Display information about the authenticated GitLab user including username, full name, email, and user ID.`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		// Setup environment (validates GITLAB_TOKEN and sets default GITLAB_URI)
-		setupEnvironment()
+		if err := setupEnvironment(); err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Create GitLab client
 		gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(os.Getenv("GITLAB_URI")))
 		if err != nil {
 			logrus.Errorln("Failed to create GitLab client:", err.Error())
-			os.Exit(1)
+			return fmt.Errorf("failed to create GitLab client: %w", err)
 		}
 
 		// Fetch current user information
 		user, _, err := gitlabClient.Users.CurrentUser()
 		if err != nil {
 			logrus.Errorln("Failed to fetch user information:", err.Error())
-			os.Exit(1)
+			return fmt.Errorf("failed to fetch user information: %w", err)
 		}
 
 		// Display user information
 		displayUserInfo(user)
+		return nil
 	},
 }
 

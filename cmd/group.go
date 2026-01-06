@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
@@ -9,48 +11,62 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	errGroupIDRequired = errors.New("group ID is required")
+)
+
 // groupCmd represents the group command.
 var groupCmd = &cobra.Command{
 	Use:   "group",
 	Short: "Get issues of a GitLab group",
 	Long:  `Get issues of a GitLab group by ID.`,
-	Run: func(cmd *cobra.Command, _ []string) {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Check if group ID is provided
 		if groupID == 0 {
 			logrus.Errorln("Group ID is required. Please provide it with the --id flag.")
-			err := cmd.Help()
-			if err != nil {
+			if err := cmd.Help(); err != nil {
 				logrus.Errorln("Failed to display help:", err)
 			}
-			os.Exit(1)
+			return errGroupIDRequired
 		}
 
 		// Initialize logging
 		initTrace(debugLevel)
 
 		// Setup environment
-		setupEnvironment()
+		if err := setupEnvironment(); err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Parse interval if provided
-		beginTime, endTime := parseInterval(interval)
+		beginTime, endTime, err := parseInterval(interval)
+		if err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Create GitLab client
 		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"))
 		if err != nil {
 			logrus.Errorln(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("failed to create GitLab client: %w", err)
 		}
 
 		// Build issue retrieval options
-		options := buildIssueOptions(0, groupID, beginTime, endTime)
+		options, err := buildIssueOptions(0, groupID, beginTime, endTime)
+		if err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Get and display issues
 		issues, err := app.GetIssues(options...)
 		if err != nil {
 			logrus.Errorln(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
-		renderIssues(issues)
+		return renderIssues(issues)
 	},
 }

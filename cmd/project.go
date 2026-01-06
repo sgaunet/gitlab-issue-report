@@ -26,65 +26,81 @@ var projectCmd = &cobra.Command{
 	Use:   "project",
 	Short: "Get issues of a GitLab project.",
 	Long:  `Get issues of a GitLab project by ID or automatically detect from git repository.`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		// Initialize logging.
 		initTrace(debugLevel)
 
 		// Setup environment.
-		setupEnvironment()
+		if err := setupEnvironment(); err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Parse interval if provided.
-		beginTime, endTime := parseInterval(interval)
+		beginTime, endTime, err := parseInterval(interval)
+		if err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Find project ID if not specified.
 		finalProjectID := projectID
 		if finalProjectID == 0 {
-			finalProjectID = findProjectID()
+			finalProjectID, err = findProjectID()
+			if err != nil {
+				logrus.Errorln(err.Error())
+				return err
+			}
 		}
 
 		// Create GitLab client.
 		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"))
 		if err != nil {
 			logrus.Errorln(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("failed to create GitLab client: %w", err)
 		}
 
 		// Build issue retrieval options.
-		options := buildIssueOptions(finalProjectID, 0, beginTime, endTime)
+		options, err := buildIssueOptions(finalProjectID, 0, beginTime, endTime)
+		if err != nil {
+			logrus.Errorln(err.Error())
+			return err
+		}
 
 		// Get and display issues.
 		issues, err := app.GetIssues(options...)
 		if err != nil {
 			logrus.Errorln(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
-		renderIssues(issues)
+		return renderIssues(issues)
 	},
 }
 
 // findProjectID attempts to determine the project ID if not specified.
-func findProjectID() int64 {
+func findProjectID() (int64, error) {
 	// Try to find git repository and project.
 	gitFolder, err := findGitRepository()
 	if err != nil {
-		logrus.Errorf("Folder .git not found")
-		os.Exit(1)
+		return 0, fmt.Errorf("git repository not found: %w", err)
 	}
 
 	// Get remote origin from git config.
 	configPath := gitFolder + string(os.PathSeparator) + ".git" + string(os.PathSeparator) + "config"
-	remoteOrigin := getRemoteOrigin(configPath)
+	remoteOrigin, err := getRemoteOrigin(configPath)
+	if err != nil {
+		return 0, err
+	}
 
 	project, err := findProject(remoteOrigin)
 	if err != nil {
-		logrus.Errorln(err.Error())
-		os.Exit(1)
+		return 0, err
 	}
 
 	logrus.Infoln("Project found: ", project.SSHURLToRepo)
 	logrus.Infoln("Project found: ", project.ID)
-	return project.ID
+	return project.ID, nil
 }
 
 // findGitRepository locates the git repository in the current or parent directories.
@@ -108,16 +124,15 @@ func findGitRepository() (string, error) {
 }
 
 // getRemoteOrigin retrieves the remote origin URL from the git configuration file.
-func getRemoteOrigin(gitConfigFile string) string {
+func getRemoteOrigin(gitConfigFile string) (string, error) {
 	cfg, err := ini.Load(gitConfigFile)
 	if err != nil {
-		logrus.Errorf("Fail to read file: %v", err)
-		os.Exit(1)
+		return "", fmt.Errorf("failed to read git config file: %w", err)
 	}
 
 	url := cfg.Section("remote \"origin\"").Key("url").String()
 	logrus.Debugln("url:", url)
-	return url
+	return url, nil
 }
 
 type project struct {

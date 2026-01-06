@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -12,70 +13,69 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
+var (
+	errGitlabTokenNotSet = errors.New("GITLAB_TOKEN environment variable is not set")
+)
+
 // setupEnvironment ensures required environment variables are set.
-func setupEnvironment() {
+func setupEnvironment() error {
 	// Check GitLab token
 	if len(os.Getenv("GITLAB_TOKEN")) == 0 {
-		logrus.Errorf("Set GITLAB_TOKEN environment variable")
-		os.Exit(1)
+		return errGitlabTokenNotSet
 	}
 
 	// Set default GitLab URI if not provided
 	if len(os.Getenv("GITLAB_URI")) == 0 {
 		if err := os.Setenv("GITLAB_URI", "https://gitlab.com"); err != nil {
-			logrus.Errorf("Failed to set GITLAB_URI: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to set GITLAB_URI: %w", err)
 		}
 	}
+	return nil
 }
 
 // getCurrentUsername fetches the username of the currently authenticated user.
-func getCurrentUsername() string {
+func getCurrentUsername() (string, error) {
 	gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(os.Getenv("GITLAB_URI")))
 	if err != nil {
-		logrus.Errorln("Failed to create GitLab client:", err.Error())
-		os.Exit(1)
+		return "", fmt.Errorf("failed to create GitLab client: %w", err)
 	}
 
 	user, _, err := gitlabClient.Users.CurrentUser()
 	if err != nil {
-		logrus.Errorln("Failed to fetch current user information:", err.Error())
-		os.Exit(1)
+		return "", fmt.Errorf("failed to fetch current user information: %w", err)
 	}
 
 	logrus.Debugf("Current user: %s (ID: %d)", user.Username, user.ID)
-	return user.Username
+	return user.Username, nil
 }
 
 // parseInterval parses the interval flag and returns the begin and end times.
-func parseInterval(interval string) (time.Time, time.Time) {
+func parseInterval(interval string) (time.Time, time.Time, error) {
 	var beginTime, endTime time.Time
 	if interval == "" {
-		return time.Time{}, time.Time{}
+		return time.Time{}, time.Time{}, nil
 	}
 
 	tz := ""
 	dbegin, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse begin date: %w", err)
 	}
 	dbegin.SetBeginDate()
 	beginTime = dbegin.Time()
 
 	dend, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse end date: %w", err)
 	}
 	dend.SetEndDate()
 	endTime = dend.Time()
 
-	return beginTime, endTime
+	return beginTime, endTime, nil
 }
 
 // buildIssueOptions creates the options for retrieving issues.
-func buildIssueOptions(projectID, groupID int64, beginTime, endTime time.Time) []core.GetIssuesOption {
+func buildIssueOptions(projectID, groupID int64, beginTime, endTime time.Time) ([]core.GetIssuesOption, error) {
 	var options []core.GetIssuesOption
 
 	// Add ID options
@@ -88,9 +88,13 @@ func buildIssueOptions(projectID, groupID int64, beginTime, endTime time.Time) [
 	options = addStatusFilterOptions(options)
 
 	// Add assignee filter options
-	options = addAssigneeFilterOptions(options)
+	var err error
+	options, err = addAssigneeFilterOptions(options)
+	if err != nil {
+		return nil, err
+	}
 
-	return options
+	return options, nil
 }
 
 // addIDOptions adds project or group ID options.
@@ -131,12 +135,15 @@ func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOpti
 }
 
 // addAssigneeFilterOptions adds assignee filter options based on mine flag.
-func addAssigneeFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOption {
+func addAssigneeFilterOptions(options []core.GetIssuesOption) ([]core.GetIssuesOption, error) {
 	if mineOption {
-		username := getCurrentUsername()
+		username, err := getCurrentUsername()
+		if err != nil {
+			return nil, err
+		}
 		options = append(options, core.WithAssigneeUsername(username))
 	}
-	return options
+	return options, nil
 }
 
 // initTrace initializes the logging based on debug level.
@@ -157,7 +164,7 @@ func initTrace(debugLevel string) {
 }
 
 // renderIssues renders the issues based on the markdown flag.
-func renderIssues(issues []*gitlab.Issue) {
+func renderIssues(issues []*gitlab.Issue) error {
 	var renderer render.Renderer
 
 	if markdownOutput {
@@ -167,7 +174,7 @@ func renderIssues(issues []*gitlab.Issue) {
 	}
 
 	if err := renderer.Render(issues, os.Stdout); err != nil {
-		logrus.Errorf("Failed to render issues: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to render issues: %w", err)
 	}
+	return nil
 }

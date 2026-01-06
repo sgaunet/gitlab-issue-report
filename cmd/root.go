@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -26,11 +26,11 @@ var rootCmd = &cobra.Command{
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+func Execute() error {
+	if err := rootCmd.Execute(); err != nil {
+		return fmt.Errorf("command execution failed: %w", err)
 	}
+	return nil
 }
 
 func init() {
