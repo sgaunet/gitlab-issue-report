@@ -176,20 +176,24 @@ func applyCommonFilters(
 	state **string,
 	createdAfter, createdBefore, updatedAfter, updatedBefore **time.Time,
 ) {
-	if g.State != "" {
-		*state = &g.State
+	setStringFilter(state, g.State)
+	setTimeFilter(createdAfter, g.FilterCreatedAtAfter)
+	setTimeFilter(createdBefore, g.FilterCreatedAtBefore)
+	setTimeFilter(updatedAfter, g.FilterUpdatedAtAfter)
+	setTimeFilter(updatedBefore, g.FilterUpdatedAtBefore)
+}
+
+// setStringFilter safely sets a string filter if the pointer is not nil and the value is not empty.
+func setStringFilter(target **string, value string) {
+	if target != nil && value != "" {
+		*target = &value
 	}
-	if !g.FilterCreatedAtAfter.IsZero() {
-		*createdAfter = &g.FilterCreatedAtAfter
-	}
-	if !g.FilterCreatedAtBefore.IsZero() {
-		*createdBefore = &g.FilterCreatedAtBefore
-	}
-	if !g.FilterUpdatedAtAfter.IsZero() {
-		*updatedAfter = &g.FilterUpdatedAtAfter
-	}
-	if !g.FilterUpdatedAtBefore.IsZero() {
-		*updatedBefore = &g.FilterUpdatedAtBefore
+}
+
+// setTimeFilter safely sets a time filter if the pointer is not nil and the value is not zero.
+func setTimeFilter(target **time.Time, value time.Time) {
+	if target != nil && !value.IsZero() {
+		*target = &value
 	}
 }
 
