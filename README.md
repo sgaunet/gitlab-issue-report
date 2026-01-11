@@ -30,24 +30,30 @@ Flags:
   -h, --help   Help for gitlab-issue-report
 
 Project Command Flags:
-  -c, --closed            Only closed issues
-  -r, --createdAt         Issues filtered with created date
-  -d, --d string          Debug level (info,warn,debug) (default "error")
-  -i, --i string          Interval, ex '/-1/ ::' to describe the interval of last month
-  -p, --id int            Project ID to get issues from
-  -m, --markdown          Output in markdown format
-  -o, --opened            Only opened issues
-  -u, --updatedAt         Issues filtered with updated date
+  -p, --project int           Project ID to get issues from (auto-detected from git repo)
+      --project-id int        Project ID to get issues from (same as --project)
+  -i, --interval string       Date interval (e.g., '/-1/ ::' for last month)
+      --created               Filter issues by creation date (requires --interval)
+  -U, --updated               Filter issues by update date (requires --interval)
+      --state string          Filter by state: opened, closed, all (default: all)
+      --format string         Output format: plain, table, markdown (default: plain)
+  -M, --mine                  Only issues assigned to current user
+      --log-level string      Log level: info, warn, error, debug (default: error)
+  -d, --debug                 Enable debug logging
+  -v, --verbose               Enable verbose logging
 
 Group Command Flags:
-  -c, --closed            Only closed issues
-  -r, --createdAt         Issues filtered with created date
-  -d, --d string          Debug level (info,warn,debug) (default "error")
-  -i, --i string          Interval, ex '/-1/ ::' to describe the interval of last month
-  -g, --id int            Group ID to get issues from
-  -m, --markdown          Output in markdown format
-  -o, --opened            Only opened issues
-  -u, --updatedAt         Issues filtered with updated date
+  -g, --group int             Group ID to get issues from (required)
+      --group-id int          Group ID to get issues from (same as --group)
+  -i, --interval string       Date interval (e.g., '/-1/ ::' for last month)
+      --created               Filter issues by creation date (requires --interval)
+  -U, --updated               Filter issues by update date (requires --interval)
+      --state string          Filter by state: opened, closed, all (default: all)
+      --format string         Output format: plain, table, markdown (default: plain)
+  -M, --mine                  Only issues assigned to current user
+      --log-level string      Log level: info, warn, error, debug (default: error)
+  -d, --debug                 Enable debug logging
+  -v, --verbose               Enable verbose logging
 ```
 
 ### Examples
@@ -57,16 +63,25 @@ Group Command Flags:
 gitlab-issue-report project -p 12345
 
 # Get closed issues from a group created in the last month
-gitlab-issue-report group -g 67890 -c -r -i "/-1/ ::"
+gitlab-issue-report group -g 67890 --state closed --created -i "/-1/ ::"
 
 # Get issues with markdown output for easy sharing
-gitlab-issue-report project -p 12345 --markdown
+gitlab-issue-report project -p 12345 --format markdown
 
-# Get opened issues from a group in markdown format
-gitlab-issue-report group -g 67890 -o -m
+# Get opened issues from a group in table format
+gitlab-issue-report group -g 67890 --state opened --format table
 
 # Get issues filtered by creation date in markdown format
-gitlab-issue-report project -p 12345 --createdAt --markdown -i "/-1/ ::"
+gitlab-issue-report project -p 12345 --created --format markdown -i "/-1/ ::"
+
+# Get your assigned issues with debug logging
+gitlab-issue-report project -p 12345 --mine --debug
+
+# Get all issues updated in the last month in table format
+gitlab-issue-report project -p 12345 --updated -i "/-1/ ::" --format table
+
+# Get closed issues from a project in markdown format
+gitlab-issue-report project -p 12345 --state closed --format markdown
 ```
 
 ### Output Formats

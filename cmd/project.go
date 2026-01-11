@@ -26,9 +26,14 @@ var projectCmd = &cobra.Command{
 	Use:   "project",
 	Short: "Get issues of a GitLab project.",
 	Long:  `Get issues of a GitLab project by ID or automatically detect from git repository.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		// Initialize logging.
-		initTrace(debugLevel)
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		// Reconcile old and new flags.
+		if err := reconcileFlags(cmd); err != nil {
+			return err
+		}
+
+		// Initialize logging with new log level variable.
+		initTrace(logLevel)
 
 		// Setup environment.
 		if err := setupEnvironment(); err != nil {
@@ -44,7 +49,7 @@ var projectCmd = &cobra.Command{
 		}
 
 		// Find project ID if not specified.
-		finalProjectID := projectID
+		finalProjectID := projectIDFlag
 		if finalProjectID == 0 {
 			finalProjectID, err = findProjectID()
 			if err != nil {

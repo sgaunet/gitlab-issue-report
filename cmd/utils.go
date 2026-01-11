@@ -114,22 +114,30 @@ func addDateFilterOptions(
 	beginTime, endTime time.Time,
 ) []core.GetIssuesOption {
 	if !beginTime.IsZero() {
-		if createdAtOption && !updatedAtOption {
+		if createdFilter && !updatedFilter {
 			options = append(options, core.WithFilterCreatedAt(beginTime, endTime))
-		} else {
+		} else if updatedFilter && !createdFilter {
+			options = append(options, core.WithFilterUpdatedAt(beginTime, endTime))
+		} else if !createdFilter && !updatedFilter {
+			// Default behavior: use updated filter when interval is set but no filter specified
 			options = append(options, core.WithFilterUpdatedAt(beginTime, endTime))
 		}
+		// Both set: invalid, but caught by validation in reconcileFlags
 	}
 	return options
 }
 
 // addStatusFilterOptions adds status filter options based on configuration.
 func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOption {
-	if openedOption && !closedOption {
+	switch stateFilter {
+	case "opened":
 		options = append(options, core.WithOpenedIssues())
-	}
-	if closedOption && !openedOption {
+	case "closed":
 		options = append(options, core.WithClosedIssues())
+	case "all":
+		// No filter, return all issues
+	case "":
+		// No filter specified, default to all issues
 	}
 	return options
 }
@@ -163,13 +171,18 @@ func initTrace(debugLevel string) {
 	}
 }
 
-// renderIssues renders the issues based on the markdown flag.
+// renderIssues renders the issues based on the format flag.
 func renderIssues(issues []*gitlab.Issue) error {
 	var renderer render.Renderer
 
-	if markdownOutput {
+	switch formatOutput {
+	case "markdown":
 		renderer = render.NewMarkdownRenderer()
-	} else {
+	case "table":
+		renderer = render.NewTableRenderer()
+	case "plain":
+		renderer = render.NewPlainRenderer(true)
+	default:
 		renderer = render.NewPlainRenderer(true)
 	}
 
