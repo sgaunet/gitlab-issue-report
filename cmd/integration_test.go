@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sgaunet/gitlab-issue-report/internal/core"
 	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
@@ -15,46 +16,49 @@ import (
 func TestRenderIssues(t *testing.T) {
 	// Create test issues
 	issues := createTestIssues()
-	
+
 	tests := []struct {
-		name           string
-		markdownOutput bool
+		name            string
+		format          string
 		expectedStrings []string
 	}{
 		{
-			name:           "plain output",
-			markdownOutput: false,
+			name:            "plain output",
+			format:          "plain",
 			expectedStrings: []string{"Title", "State", "Created At", "Updated At", "Fix authentication bug", "opened"},
 		},
 		{
-			name:           "markdown output",
-			markdownOutput: true,
+			name:            "markdown output",
+			format:          "markdown",
 			expectedStrings: []string{"# GitLab Issues Report", "| Title | State | Created At | Updated At |", "| Fix authentication bug | opened |"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set the markdown flag
-			markdownOutput = tt.markdownOutput
-			
+			// Set the format flag
+			formatOutput = tt.format
+
 			// Use the renderer directly instead of capturing stdout
 			var renderer render.Renderer
-			if markdownOutput {
+			switch formatOutput {
+			case "markdown":
 				renderer = render.NewMarkdownRenderer()
-			} else {
+			case "table":
+				renderer = render.NewTableRenderer()
+			default:
 				renderer = render.NewPlainRenderer(true)
 			}
-			
+
 			var buf bytes.Buffer
 			err := renderer.Render(issues, &buf)
 			if err != nil {
 				t.Errorf("renderIssues() renderer error = %v", err)
 				return
 			}
-			
+
 			output := buf.String()
-			
+
 			// Check expected strings
 			for _, expected := range tt.expectedStrings {
 				if !strings.Contains(output, expected) {
@@ -71,40 +75,36 @@ func TestBuildIssueOptions(t *testing.T) {
 		name             string
 		projectID        int64
 		groupID          int64
-		closedOption     bool
-		openedOption     bool
-		createdAtOption  bool
-		updatedAtOption  bool
+		stateFilter      string
+		createdFilter    bool
+		updatedFilter    bool
 		expectedContains []string
 	}{
 		{
 			name:             "project only",
 			projectID:        123,
 			groupID:          0,
-			closedOption:     false,
-			openedOption:     false,
-			createdAtOption:  false,
-			updatedAtOption:  false,
+			stateFilter:      "",
+			createdFilter:    false,
+			updatedFilter:    false,
 			expectedContains: []string{}, // Can't easily test functional options, but we can test the function doesn't panic
 		},
 		{
 			name:             "group only",
 			projectID:        0,
 			groupID:          456,
-			closedOption:     false,
-			openedOption:     false,
-			createdAtOption:  false,
-			updatedAtOption:  false,
+			stateFilter:      "",
+			createdFilter:    false,
+			updatedFilter:    false,
 			expectedContains: []string{},
 		},
 		{
 			name:             "with status filters",
 			projectID:        123,
 			groupID:          0,
-			closedOption:     true,
-			openedOption:     false,
-			createdAtOption:  false,
-			updatedAtOption:  false,
+			stateFilter:      "closed",
+			createdFilter:    false,
+			updatedFilter:    false,
 			expectedContains: []string{},
 		},
 	}
@@ -112,22 +112,19 @@ func TestBuildIssueOptions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set global variables to simulate CLI flags
-			originalClosed := closedOption
-			originalOpened := openedOption
-			originalCreatedAt := createdAtOption
-			originalUpdatedAt := updatedAtOption
-			
+			originalState := stateFilter
+			originalCreated := createdFilter
+			originalUpdated := updatedFilter
+
 			defer func() {
-				closedOption = originalClosed
-				openedOption = originalOpened
-				createdAtOption = originalCreatedAt
-				updatedAtOption = originalUpdatedAt
+				stateFilter = originalState
+				createdFilter = originalCreated
+				updatedFilter = originalUpdated
 			}()
-			
-			closedOption = tt.closedOption
-			openedOption = tt.openedOption
-			createdAtOption = tt.createdAtOption
-			updatedAtOption = tt.updatedAtOption
+
+			stateFilter = tt.stateFilter
+			createdFilter = tt.createdFilter
+			updatedFilter = tt.updatedFilter
 
 			// Call the function and ensure it doesn't panic
 			options, err := buildIssueOptions(tt.projectID, tt.groupID, time.Time{}, time.Time{})
@@ -343,4 +340,298 @@ func TestRendererIntegration(t *testing.T) {
 			t.Error("Plain output missing issue title")
 		}
 	})
+}
+
+// TestNewFormatFlag tests the new format flag with all output formats.
+func TestNewFormatFlag(t *testing.T) {
+	issues := createTestIssues()
+
+	tests := []struct {
+		name            string
+		format          string
+		expectedStrings []string
+	}{
+		{
+			name:            "plain format",
+			format:          "plain",
+			expectedStrings: []string{"Title", "State", "Fix authentication bug"},
+		},
+		{
+			name:            "table format",
+			format:          "table",
+			expectedStrings: []string{"Fix authentication bug", "opened"},
+		},
+		{
+			name:            "markdown format",
+			format:          "markdown",
+			expectedStrings: []string{"# GitLab Issues Report", "| Title | State |"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore formatOutput
+			originalFormat := formatOutput
+			defer func() { formatOutput = originalFormat }()
+
+			formatOutput = tt.format
+
+			var buf bytes.Buffer
+			var renderer render.Renderer
+
+			switch formatOutput {
+			case "markdown":
+				renderer = render.NewMarkdownRenderer()
+			case "table":
+				renderer = render.NewTableRenderer()
+			case "plain":
+				renderer = render.NewPlainRenderer(true)
+			}
+
+			err := renderer.Render(issues, &buf)
+			if err != nil {
+				t.Errorf("Format %s render error = %v", tt.format, err)
+				return
+			}
+
+			output := buf.String()
+			for _, expected := range tt.expectedStrings {
+				if !strings.Contains(output, expected) {
+					t.Errorf("Format %s output missing expected string: %q", tt.format, expected)
+				}
+			}
+		})
+	}
+}
+
+// TestStateFilterFunctionality tests the state filter with new flag.
+func TestStateFilterFunctionality(t *testing.T) {
+	tests := []struct {
+		name         string
+		stateFilter  string
+		expectOpened bool
+		expectClosed bool
+	}{
+		{
+			name:         "state opened",
+			stateFilter:  "opened",
+			expectOpened: true,
+			expectClosed: false,
+		},
+		{
+			name:         "state closed",
+			stateFilter:  "closed",
+			expectOpened: false,
+			expectClosed: true,
+		},
+		{
+			name:         "state all",
+			stateFilter:  "all",
+			expectOpened: false,
+			expectClosed: false,
+		},
+		{
+			name:         "empty state",
+			stateFilter:  "",
+			expectOpened: false,
+			expectClosed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore stateFilter
+			originalState := stateFilter
+			defer func() { stateFilter = originalState }()
+
+			stateFilter = tt.stateFilter
+
+			options := addStatusFilterOptions([]core.GetIssuesOption{})
+
+			// We can't directly inspect the options, but we can verify the function doesn't panic
+			if options == nil {
+				t.Error("addStatusFilterOptions() returned nil")
+			}
+		})
+	}
+}
+
+// TestValidateFlags tests the validateFlags function.
+func TestValidateFlags(t *testing.T) {
+	tests := []struct {
+		name          string
+		setup         func()
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid state opened",
+			setup: func() {
+				stateFilter = "opened"
+				formatOutput = "plain"
+				createdFilter = false
+				updatedFilter = false
+				interval = ""
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid state",
+			setup: func() {
+				stateFilter = "invalid"
+				formatOutput = "plain"
+			},
+			expectError:   true,
+			errorContains: "invalid --state",
+		},
+		{
+			name: "invalid format",
+			setup: func() {
+				stateFilter = ""
+				formatOutput = "invalid"
+			},
+			expectError:   true,
+			errorContains: "invalid --format",
+		},
+		{
+			name: "created filter without interval",
+			setup: func() {
+				stateFilter = ""
+				formatOutput = "plain"
+				createdFilter = true
+				updatedFilter = false
+				interval = ""
+			},
+			expectError:   true,
+			errorContains: "requires --interval",
+		},
+		{
+			name: "both created and updated filters",
+			setup: func() {
+				stateFilter = ""
+				formatOutput = "plain"
+				createdFilter = true
+				updatedFilter = true
+				interval = "/-1/ ::"
+			},
+			expectError:   true,
+			errorContains: "cannot be used together",
+		},
+		{
+			name: "valid with interval and created",
+			setup: func() {
+				stateFilter = ""
+				formatOutput = "plain"
+				createdFilter = true
+				updatedFilter = false
+				interval = "/-1/ ::"
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original values
+			origState := stateFilter
+			origFormat := formatOutput
+			origCreated := createdFilter
+			origUpdated := updatedFilter
+			origInterval := interval
+
+			defer func() {
+				stateFilter = origState
+				formatOutput = origFormat
+				createdFilter = origCreated
+				updatedFilter = origUpdated
+				interval = origInterval
+			}()
+
+			// Setup test state
+			tt.setup()
+
+			// Run validation
+			err := validateFlags()
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("validateFlags() expected error but got none")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateFlags() error = %v, want error containing %q", err, tt.errorContains)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("validateFlags() unexpected error = %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestDateFilterOptions tests the updated date filter logic.
+func TestDateFilterOptions(t *testing.T) {
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+
+	tests := []struct {
+		name          string
+		createdFilter bool
+		updatedFilter bool
+		hasTime       bool
+	}{
+		{
+			name:          "created filter only",
+			createdFilter: true,
+			updatedFilter: false,
+			hasTime:       true,
+		},
+		{
+			name:          "updated filter only",
+			createdFilter: false,
+			updatedFilter: true,
+			hasTime:       true,
+		},
+		{
+			name:          "no filters with time",
+			createdFilter: false,
+			updatedFilter: false,
+			hasTime:       true,
+		},
+		{
+			name:          "no filters no time",
+			createdFilter: false,
+			updatedFilter: false,
+			hasTime:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original values
+			origCreated := createdFilter
+			origUpdated := updatedFilter
+
+			defer func() {
+				createdFilter = origCreated
+				updatedFilter = origUpdated
+			}()
+
+			// Set test values
+			createdFilter = tt.createdFilter
+			updatedFilter = tt.updatedFilter
+
+			var beginTime, endTime time.Time
+			if tt.hasTime {
+				beginTime = yesterday
+				endTime = now
+			}
+
+			options := addDateFilterOptions([]core.GetIssuesOption{}, beginTime, endTime)
+
+			// Verify function doesn't panic
+			if options == nil {
+				t.Error("addDateFilterOptions() returned nil")
+			}
+		})
+	}
 }

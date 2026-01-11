@@ -21,17 +21,22 @@ var groupCmd = &cobra.Command{
 	Short: "Get issues of a GitLab group",
 	Long:  `Get issues of a GitLab group by ID.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		// Reconcile old and new flags
+		if err := reconcileFlags(cmd); err != nil {
+			return err
+		}
+
 		// Check if group ID is provided
-		if groupID == 0 {
-			logrus.Errorln("Group ID is required. Please provide it with the --id flag.")
+		if groupIDFlag == 0 {
+			logrus.Errorln("Group ID is required. Please provide it with the --group-id or --group flag.")
 			if err := cmd.Help(); err != nil {
 				logrus.Errorln("Failed to display help:", err)
 			}
 			return errGroupIDRequired
 		}
 
-		// Initialize logging
-		initTrace(debugLevel)
+		// Initialize logging with new log level variable
+		initTrace(logLevel)
 
 		// Setup environment
 		if err := setupEnvironment(); err != nil {
@@ -54,7 +59,7 @@ var groupCmd = &cobra.Command{
 		}
 
 		// Build issue retrieval options
-		options, err := buildIssueOptions(0, groupID, beginTime, endTime)
+		options, err := buildIssueOptions(0, groupIDFlag, beginTime, endTime)
 		if err != nil {
 			logrus.Errorln(err.Error())
 			return err
