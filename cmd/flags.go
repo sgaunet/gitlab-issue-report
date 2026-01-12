@@ -10,11 +10,15 @@ import (
 )
 
 var (
-	errAPITimeoutNonPositive = errors.New("--api-timeout must be positive")
+	errAPITimeoutNonPositive  = errors.New("--api-timeout must be positive")
+	errInvalidStateValue      = errors.New("invalid --state value")
+	errInvalidFormatValue     = errors.New("invalid --format value")
+	errIntervalRequired       = errors.New("--created or --updated requires --interval to be set")
+	errCreatedUpdatedConflict = errors.New("--created and --updated cannot be used together")
 )
 
 // reconcileFlags processes flag values and applies flag priority logic.
-func reconcileFlags(cmd *cobra.Command) error {
+func reconcileFlags(_ *cobra.Command) error {
 	// Reconcile logging flags - debug/verbose take precedence over log-level
 	if debugFlag {
 		logLevel = "debug"
@@ -27,29 +31,49 @@ func reconcileFlags(cmd *cobra.Command) error {
 
 // validateFlags validates flag values and combinations.
 func validateFlags() error {
-	// Validate state enum
+	if err := validateStateFlag(); err != nil {
+		return err
+	}
+	if err := validateFormatFlag(); err != nil {
+		return err
+	}
+	if err := validateDateFilters(); err != nil {
+		return err
+	}
+	return validateAPITimeout()
+}
+
+// validateStateFlag validates the state filter value.
+func validateStateFlag() error {
 	if stateFilter != "" && stateFilter != "opened" &&
 		stateFilter != "closed" && stateFilter != "all" {
-		return fmt.Errorf("invalid --state value: %s (must be opened, closed, or all)", stateFilter)
+		return fmt.Errorf("%w: %s (must be opened, closed, or all)", errInvalidStateValue, stateFilter)
 	}
+	return nil
+}
 
-	// Validate format enum
+// validateFormatFlag validates the format output value.
+func validateFormatFlag() error {
 	if formatOutput != "plain" && formatOutput != "table" &&
 		formatOutput != "markdown" {
-		return fmt.Errorf("invalid --format value: %s (must be plain, table, or markdown)", formatOutput)
+		return fmt.Errorf("%w: %s (must be plain, table, or markdown)", errInvalidFormatValue, formatOutput)
 	}
+	return nil
+}
 
-	// Validate date filters require interval
+// validateDateFilters validates date filter combinations.
+func validateDateFilters() error {
 	if (createdFilter || updatedFilter) && interval == "" {
-		return fmt.Errorf("--created or --updated requires --interval to be set")
+		return errIntervalRequired
 	}
-
-	// Validate that both created and updated are not set at the same time
 	if createdFilter && updatedFilter {
-		return fmt.Errorf("--created and --updated cannot be used together, choose one")
+		return errCreatedUpdatedConflict
 	}
+	return nil
+}
 
-	// Validate API timeout
+// validateAPITimeout validates the API timeout value.
+func validateAPITimeout() error {
 	if apiTimeout <= 0 {
 		return fmt.Errorf("%w (got %v)", errAPITimeoutNonPositive, apiTimeout)
 	}
@@ -59,6 +83,5 @@ func validateFlags() error {
 	if apiTimeout > 5*time.Minute {
 		logrus.Warnf("--api-timeout is very long (%v), consider using a shorter timeout", apiTimeout)
 	}
-
 	return nil
 }

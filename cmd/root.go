@@ -1,3 +1,4 @@
+// Package cmd provides commands for gitlab-issue-report.
 package cmd
 
 import (
@@ -11,7 +12,7 @@ const (
 	defaultAPITimeout = 30 * time.Second // Default timeout for GitLab API requests
 )
 
-// CLI flag variables
+// CLI flag variables.
 var (
 	logLevel      string        // Log level: info, warn, error, debug
 	projectIDFlag int64         // Project ID
@@ -56,13 +57,17 @@ func init() {
 	projectCmd.Flags().StringVarP(&interval, "interval", "i", "", "Date interval (e.g., '/-1/ ::' for last month)")
 	projectCmd.Flags().StringVar(&logLevel, "log-level", "error", "Log level: info, warn, error, debug")
 	projectCmd.Flags().BoolVarP(&debugFlag, "debug", "d", false, "Enable debug logging (shorthand for --log-level=debug)")
-	projectCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false, "Enable verbose logging (shorthand for --log-level=info)")
+	projectCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false,
+		"Enable verbose logging (shorthand for --log-level=info)")
 
-	projectCmd.Flags().Int64Var(&projectIDFlag, "project-id", 0, "Project ID to get issues from (auto-detected from git if not set)")
+	projectCmd.Flags().Int64Var(&projectIDFlag, "project-id", 0,
+		"Project ID to get issues from (auto-detected from git if not set)")
 	projectCmd.Flags().Int64VarP(&projectIDFlag, "project", "p", 0, "Project ID (alias for --project-id)")
 
-	projectCmd.Flags().BoolVar(&createdFilter, "created", false, "Filter issues by creation date (requires --interval)")
-	projectCmd.Flags().BoolVarP(&updatedFilter, "updated", "U", false, "Filter issues by update date (requires --interval)")
+	projectCmd.Flags().BoolVar(&createdFilter, "created", false,
+		"Filter issues by creation date (requires --interval)")
+	projectCmd.Flags().BoolVarP(&updatedFilter, "updated", "U", false,
+		"Filter issues by update date (requires --interval)")
 
 	projectCmd.Flags().StringVar(&stateFilter, "state", "", "Filter by state: opened, closed, all")
 	projectCmd.Flags().StringVar(&formatOutput, "format", "plain", "Output format: plain, table, markdown")
@@ -76,8 +81,10 @@ func init() {
 	// Group command flags
 	groupCmd.Flags().StringVarP(&interval, "interval", "i", "", "Date interval (e.g., '/-1/ ::' for last month)")
 	groupCmd.Flags().StringVar(&logLevel, "log-level", "error", "Log level: info, warn, error, debug")
-	groupCmd.Flags().BoolVarP(&debugFlag, "debug", "d", false, "Enable debug logging (shorthand for --log-level=debug)")
-	groupCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false, "Enable verbose logging (shorthand for --log-level=info)")
+	groupCmd.Flags().BoolVarP(&debugFlag, "debug", "d", false,
+		"Enable debug logging (shorthand for --log-level=debug)")
+	groupCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false,
+		"Enable verbose logging (shorthand for --log-level=info)")
 
 	groupCmd.Flags().Int64Var(&groupIDFlag, "group-id", 0, "Group ID to get issues from (required)")
 	groupCmd.Flags().Int64VarP(&groupIDFlag, "group", "g", 0, "Group ID (alias for --group-id)")

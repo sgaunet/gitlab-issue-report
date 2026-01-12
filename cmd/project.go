@@ -1,4 +1,3 @@
-// Package cmd provides commands for gitlab-issue-report.
 package cmd
 
 import (
