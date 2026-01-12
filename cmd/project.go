@@ -41,6 +41,9 @@ var projectCmd = &cobra.Command{
 			return err
 		}
 
+		// Apply timeout from environment variable if flag not set.
+		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
+
 		// Parse interval if provided.
 		beginTime, endTime, err := parseInterval(interval)
 		if err != nil {
@@ -59,7 +62,7 @@ var projectCmd = &cobra.Command{
 		}
 
 		// Create GitLab client.
-		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"))
+		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 		if err != nil {
 			logrus.Errorln(err.Error())
 			return fmt.Errorf("failed to create GitLab client: %w", err)
@@ -163,7 +166,7 @@ func findProject(remoteOrigin string) (project, error) {
 		logrus.Warnf("GITLAB_URI not set, defaulting to %s", gitlabURI)
 	}
 
-	git, err := gitlab.NewClient(gitlabToken, gitlab.WithBaseURL(gitlabURI))
+	git, err := createGitlabClient(gitlabToken, gitlabURI, apiTimeout)
 	if err != nil {
 		logrus.Errorf("Failed to create GitLab client: %v", err)
 		return project{}, fmt.Errorf("failed to create GitLab client: %w", err)

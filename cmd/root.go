@@ -2,23 +2,29 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
+const (
+	defaultAPITimeout = 30 * time.Second // Default timeout for GitLab API requests
+)
+
 // CLI flag variables
 var (
-	logLevel      string // Log level: info, warn, error, debug
-	projectIDFlag int64  // Project ID
-	groupIDFlag   int64  // Group ID
-	createdFilter bool   // Filter by created date
-	updatedFilter bool   // Filter by updated date
-	stateFilter   string // Filter by state: "opened", "closed", "all"
-	formatOutput  string // Output format: "plain", "table", "markdown"
-	debugFlag     bool   // Shorthand for debug logging
-	verboseFlag   bool   // Shorthand for verbose logging
-	interval      string // Date interval
-	mineOption    bool   // Filter issues assigned to current user
+	logLevel      string        // Log level: info, warn, error, debug
+	projectIDFlag int64         // Project ID
+	groupIDFlag   int64         // Group ID
+	createdFilter bool          // Filter by created date
+	updatedFilter bool          // Filter by updated date
+	stateFilter   string        // Filter by state: "opened", "closed", "all"
+	formatOutput  string        // Output format: "plain", "table", "markdown"
+	debugFlag     bool          // Shorthand for debug logging
+	verboseFlag   bool          // Shorthand for verbose logging
+	interval      string        // Date interval
+	mineOption    bool          // Filter issues assigned to current user
+	apiTimeout    time.Duration // API request timeout
 )
 
 // rootCmd represents the base command when called without any subcommands.
@@ -39,6 +45,10 @@ func Execute() error {
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
+	// ===== PERSISTENT FLAGS (ALL COMMANDS) =====
+	rootCmd.PersistentFlags().DurationVar(&apiTimeout, "api-timeout", defaultAPITimeout,
+		"Timeout for GitLab API requests (e.g., 30s, 1m)")
 
 	// ===== PROJECT COMMAND FLAGS =====
 

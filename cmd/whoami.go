@@ -14,18 +14,21 @@ var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
 	Short: "Display information about the authenticated GitLab user",
 	Long:  `Display information about the authenticated GitLab user including username, full name, email, and user ID.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Setup environment (validates GITLAB_TOKEN and sets default GITLAB_URI)
 		if err := setupEnvironment(); err != nil {
 			logrus.Errorln(err.Error())
 			return err
 		}
 
+		// Apply timeout from environment variable if flag not set
+		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
+
 		// Create GitLab client
-		gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(os.Getenv("GITLAB_URI")))
+		gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 		if err != nil {
 			logrus.Errorln("Failed to create GitLab client:", err.Error())
-			return fmt.Errorf("failed to create GitLab client: %w", err)
+			return err
 		}
 
 		// Fetch current user information

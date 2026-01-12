@@ -44,6 +44,9 @@ var groupCmd = &cobra.Command{
 			return err
 		}
 
+		// Apply timeout from environment variable if flag not set
+		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
+
 		// Parse interval if provided
 		beginTime, endTime, err := parseInterval(interval)
 		if err != nil {
@@ -52,7 +55,7 @@ var groupCmd = &cobra.Command{
 		}
 
 		// Create GitLab client
-		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"))
+		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 		if err != nil {
 			logrus.Errorln(err.Error())
 			return fmt.Errorf("failed to create GitLab client: %w", err)

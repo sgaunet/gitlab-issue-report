@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,7 +15,8 @@ import (
 )
 
 var (
-	errGitlabTokenNotSet = errors.New("GITLAB_TOKEN environment variable is not set")
+	errGitlabTokenNotSet      = errors.New("GITLAB_TOKEN environment variable is not set")
+	errInvalidAPITimeoutValue = errors.New("invalid GITLAB_API_TIMEOUT value")
 )
 
 // setupEnvironment ensures required environment variables are set.
@@ -30,14 +32,51 @@ func setupEnvironment() error {
 			return fmt.Errorf("failed to set GITLAB_URI: %w", err)
 		}
 	}
+
 	return nil
+}
+
+// applyTimeoutFromEnv applies timeout from environment variable if flag not explicitly set.
+// This must be called after flag parsing in command execution context.
+func applyTimeoutFromEnv(flagChanged bool) {
+	// Only apply environment variable if flag was not explicitly set
+	if !flagChanged {
+		if timeoutEnv := os.Getenv("GITLAB_API_TIMEOUT"); timeoutEnv != "" {
+			parsed, err := time.ParseDuration(timeoutEnv)
+			if err != nil {
+				logrus.Warnf("%v: '%s', using default %v", errInvalidAPITimeoutValue, timeoutEnv, defaultAPITimeout)
+			} else {
+				apiTimeout = parsed
+				logrus.Debugf("Using API timeout from environment: %v", apiTimeout)
+			}
+		}
+	}
+}
+
+// createGitlabClient creates a GitLab client with custom HTTP timeout.
+func createGitlabClient(token, uri string, timeout time.Duration) (*gitlab.Client, error) {
+	httpClient := &http.Client{
+		Timeout: timeout,
+	}
+
+	client, err := gitlab.NewClient(
+		token,
+		gitlab.WithBaseURL(uri),
+		gitlab.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GitLab client: %w", err)
+	}
+
+	logrus.Debugf("GitLab client created with timeout: %v", timeout)
+	return client, nil
 }
 
 // getCurrentUsername fetches the username of the currently authenticated user.
 func getCurrentUsername() (string, error) {
-	gitlabClient, err := gitlab.NewClient(os.Getenv("GITLAB_TOKEN"), gitlab.WithBaseURL(os.Getenv("GITLAB_URI")))
+	gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 	if err != nil {
-		return "", fmt.Errorf("failed to create GitLab client: %w", err)
+		return "", err
 	}
 
 	user, _, err := gitlabClient.Users.CurrentUser()
