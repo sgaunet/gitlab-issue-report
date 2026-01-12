@@ -94,7 +94,7 @@ func findProjectID() (int64, error) {
 	}
 
 	// Get remote origin from git config.
-	configPath := gitFolder + string(os.PathSeparator) + ".git" + string(os.PathSeparator) + "config"
+	configPath := filepath.Join(gitFolder, ".git", "config")
 	remoteOrigin, err := getRemoteOrigin(configPath)
 	if err != nil {
 		return 0, err
@@ -119,7 +119,7 @@ func findGitRepository() (string, error) {
 
 	for cwd != "/" {
 		logrus.Debugln(cwd)
-		stat, err := os.Stat(cwd + string(os.PathSeparator) + ".git")
+		stat, err := os.Stat(filepath.Join(cwd, ".git"))
 		if err == nil {
 			if stat.IsDir() {
 				return cwd, nil // Found git directory.
