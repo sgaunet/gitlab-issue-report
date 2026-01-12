@@ -4,7 +4,6 @@ package render
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
@@ -119,25 +118,9 @@ func (m *MarkdownRenderer) Render(issues []*gitlab.Issue, writer io.Writer) erro
 	return nil
 }
 
-// PrintIssues prints the GitLab issues in a formatted table to stdout.
-//
-// Deprecated: Use Renderer interface instead for better testability.
-func PrintIssues(issues []*gitlab.Issue, printHeader bool) {
-	renderer := NewPlainRenderer(printHeader)
-	_ = renderer.Render(issues, os.Stdout)
-}
-
 func truncateStr(str string, length int) string {
 	if len(str) > length && length > 0 {
 		return str[:length]
 	}
 	return str
-}
-
-// PrintTab prints the GitLab issues in a table format using tablewriter.
-//
-// Deprecated: Use Renderer interface instead for better testability.
-func PrintTab(issues []*gitlab.Issue) {
-	renderer := NewTableRenderer()
-	_ = renderer.Render(issues, os.Stdout)
 }
