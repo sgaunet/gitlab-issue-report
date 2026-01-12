@@ -3,6 +3,8 @@ package core
 
 import (
 	"fmt"
+	"net/http"
+	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
@@ -13,8 +15,16 @@ type App struct {
 }
 
 // NewApp creates a new application instance with GitLab client.
-func NewApp(gitlabToken, gitlabURI string) (*App, error) {
-	gitlabClient, err := gitlab.NewClient(gitlabToken, gitlab.WithBaseURL(gitlabURI))
+func NewApp(gitlabToken, gitlabURI string, timeout time.Duration) (*App, error) {
+	httpClient := &http.Client{
+		Timeout: timeout,
+	}
+
+	gitlabClient, err := gitlab.NewClient(
+		gitlabToken,
+		gitlab.WithBaseURL(gitlabURI),
+		gitlab.WithHTTPClient(httpClient),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GitLab client: %w", err)
 	}
