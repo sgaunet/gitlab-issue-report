@@ -153,11 +153,12 @@ func addDateFilterOptions(
 	beginTime, endTime time.Time,
 ) []core.GetIssuesOption {
 	if !beginTime.IsZero() {
-		if createdFilter && !updatedFilter {
+		switch {
+		case createdFilter && !updatedFilter:
 			options = append(options, core.WithFilterCreatedAt(beginTime, endTime))
-		} else if updatedFilter && !createdFilter {
+		case updatedFilter && !createdFilter:
 			options = append(options, core.WithFilterUpdatedAt(beginTime, endTime))
-		} else if !createdFilter && !updatedFilter {
+		case !createdFilter && !updatedFilter:
 			// Default behavior: use updated filter when interval is set but no filter specified
 			options = append(options, core.WithFilterUpdatedAt(beginTime, endTime))
 		}

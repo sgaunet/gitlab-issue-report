@@ -137,7 +137,7 @@ func (a *App) GetIssues(opts ...GetIssuesOption) ([]*gitlab.Issue, error) {
 }
 
 // applyIssueFilters applies common filter settings to issue list options.
-func applyIssueFilters(g *GetIssues, listOptions interface{}) {
+func applyIssueFilters(g *GetIssues, listOptions any) {
 	// Use type switches to handle both project and group issue options
 	switch opts := listOptions.(type) {
 	case *gitlab.ListProjectIssuesOptions:

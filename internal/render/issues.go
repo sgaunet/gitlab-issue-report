@@ -120,6 +120,7 @@ func (m *MarkdownRenderer) Render(issues []*gitlab.Issue, writer io.Writer) erro
 }
 
 // PrintIssues prints the GitLab issues in a formatted table to stdout.
+//
 // Deprecated: Use Renderer interface instead for better testability.
 func PrintIssues(issues []*gitlab.Issue, printHeader bool) {
 	renderer := NewPlainRenderer(printHeader)
@@ -134,6 +135,7 @@ func truncateStr(str string, length int) string {
 }
 
 // PrintTab prints the GitLab issues in a table format using tablewriter.
+//
 // Deprecated: Use Renderer interface instead for better testability.
 func PrintTab(issues []*gitlab.Issue) {
 	renderer := NewTableRenderer()
