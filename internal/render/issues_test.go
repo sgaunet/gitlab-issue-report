@@ -262,6 +262,196 @@ func TestRendererInterface(t *testing.T) {
 	var _ Renderer = NewTableRenderer()
 }
 
+// createTestIssuesWithProjects creates test issues with ProjectID set for testing.
+func createTestIssuesWithProjects() []*gitlab.Issue {
+	issues := createTestIssues()
+	issues[0].ProjectID = 100
+	issues[1].ProjectID = 200
+	issues[2].ProjectID = 100
+	return issues
+}
+
+func TestMarkdownRenderer_RenderWithContext_Project(t *testing.T) {
+	issues := createTestIssues()
+	context := NewProjectContext("my-namespace/my-project")
+
+	renderer := NewMarkdownRenderer()
+	var buf bytes.Buffer
+
+	err := renderer.RenderWithContext(issues, context, &buf)
+	if err != nil {
+		t.Errorf("MarkdownRenderer.RenderWithContext() error = %v", err)
+		return
+	}
+
+	output := buf.String()
+	expected := []string{
+		"# GitLab Issues Report - my-namespace/my-project",
+		"| Title | State | Created At | Updated At |",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Output missing expected string: %q\nGot:\n%s", exp, output)
+		}
+	}
+}
+
+func TestMarkdownRenderer_RenderWithContext_Group(t *testing.T) {
+	issues := createTestIssuesWithProjects()
+
+	projectMap := map[int64]string{
+		100: "namespace/project-a",
+		200: "namespace/project-b",
+	}
+	context := NewGroupContext("my-group", projectMap)
+
+	renderer := NewMarkdownRenderer()
+	var buf bytes.Buffer
+
+	err := renderer.RenderWithContext(issues, context, &buf)
+	if err != nil {
+		t.Errorf("MarkdownRenderer.RenderWithContext() error = %v", err)
+		return
+	}
+
+	output := buf.String()
+	expected := []string{
+		"# GitLab Issues Report - Group: my-group",
+		"| Project | Title | State | Created At | Updated At |",
+		"namespace/project-a",
+		"namespace/project-b",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Output missing expected string: %q\nGot:\n%s", exp, output)
+		}
+	}
+}
+
+func TestPlainRenderer_RenderWithContext_Project(t *testing.T) {
+	issues := createTestIssues()
+	context := NewProjectContext("my-namespace/my-project")
+
+	renderer := NewPlainRenderer(true)
+	var buf bytes.Buffer
+
+	err := renderer.RenderWithContext(issues, context, &buf)
+	if err != nil {
+		t.Errorf("PlainRenderer.RenderWithContext() error = %v", err)
+		return
+	}
+
+	output := buf.String()
+	expected := []string{
+		"Project: my-namespace/my-project",
+		"Title",
+		"State",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Output missing expected string: %q\nGot:\n%s", exp, output)
+		}
+	}
+}
+
+func TestPlainRenderer_RenderWithContext_Group(t *testing.T) {
+	issues := createTestIssuesWithProjects()
+
+	projectMap := map[int64]string{
+		100: "namespace/project-a",
+		200: "namespace/project-b",
+	}
+	context := NewGroupContext("my-group", projectMap)
+
+	renderer := NewPlainRenderer(true)
+	var buf bytes.Buffer
+
+	err := renderer.RenderWithContext(issues, context, &buf)
+	if err != nil {
+		t.Errorf("PlainRenderer.RenderWithContext() error = %v", err)
+		return
+	}
+
+	output := buf.String()
+	expected := []string{
+		"Group: my-group",
+		"Project",
+		"Title",
+		"namespace/project-a",
+		"namespace/project-b",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Output missing expected string: %q\nGot:\n%s", exp, output)
+		}
+	}
+}
+
+func TestTableRenderer_RenderWithContext_Project(t *testing.T) {
+	issues := createTestIssues()
+	context := NewProjectContext("my-namespace/my-project")
+
+	renderer := NewTableRenderer()
+	var buf bytes.Buffer
+
+	err := renderer.RenderWithContext(issues, context, &buf)
+	if err != nil {
+		t.Errorf("TableRenderer.RenderWithContext() error = %v", err)
+		return
+	}
+
+	output := buf.String()
+	expected := []string{
+		"Project: my-namespace/my-project",
+		"TITLE",
+		"STATE",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Output missing expected string: %q\nGot:\n%s", exp, output)
+		}
+	}
+}
+
+func TestTableRenderer_RenderWithContext_Group(t *testing.T) {
+	issues := createTestIssuesWithProjects()
+
+	projectMap := map[int64]string{
+		100: "namespace/project-a",
+		200: "namespace/project-b",
+	}
+	context := NewGroupContext("my-group", projectMap)
+
+	renderer := NewTableRenderer()
+	var buf bytes.Buffer
+
+	err := renderer.RenderWithContext(issues, context, &buf)
+	if err != nil {
+		t.Errorf("TableRenderer.RenderWithContext() error = %v", err)
+		return
+	}
+
+	output := buf.String()
+	expected := []string{
+		"Group: my-group",
+		"PROJECT",
+		"TITLE",
+		"namespace/project-a",
+		"namespace/project-b",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Output missing expected string: %q\nGot:\n%s", exp, output)
+		}
+	}
+}
+
 // BenchmarkMarkdownRenderer benchmarks the markdown renderer.
 func BenchmarkMarkdownRenderer(b *testing.B) {
 	issues := createTestIssues()

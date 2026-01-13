@@ -213,6 +213,11 @@ func initTrace(debugLevel string) {
 
 // renderIssues renders the issues based on the format flag.
 func renderIssues(issues []*gitlab.Issue) error {
+	return renderIssuesWithContext(issues, nil)
+}
+
+// renderIssuesWithContext renders issues with optional rendering context.
+func renderIssuesWithContext(issues []*gitlab.Issue, context *render.Context) error {
 	var renderer render.Renderer
 
 	switch formatOutput {
@@ -226,8 +231,17 @@ func renderIssues(issues []*gitlab.Issue) error {
 		renderer = render.NewPlainRenderer(true)
 	}
 
-	if err := renderer.Render(issues, os.Stdout); err != nil {
-		return fmt.Errorf("failed to render issues: %w", err)
+	// Use context-aware rendering if context is provided
+	if context != nil {
+		if err := renderer.RenderWithContext(issues, context, os.Stdout); err != nil {
+			return fmt.Errorf("failed to render issues: %w", err)
+		}
+	} else {
+		// Fall back to regular rendering
+		if err := renderer.Render(issues, os.Stdout); err != nil {
+			return fmt.Errorf("failed to render issues: %w", err)
+		}
 	}
+
 	return nil
 }

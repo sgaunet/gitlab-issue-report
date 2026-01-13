@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
+	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
@@ -81,7 +82,17 @@ var projectCmd = &cobra.Command{
 			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
-		return renderIssues(issues)
+		// Fetch project path for context
+		projectPath, err := app.GetProjectPath(finalProjectID)
+		if err != nil {
+			logrus.Warnf("Failed to fetch project path: %v", err)
+			// Fall back to rendering without context
+			return renderIssues(issues)
+		}
+
+		// Create context and render
+		context := render.NewProjectContext(projectPath)
+		return renderIssuesWithContext(issues, context)
 	},
 }
 

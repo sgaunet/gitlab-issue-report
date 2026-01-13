@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
+	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -74,6 +75,23 @@ var groupCmd = &cobra.Command{
 			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
-		return renderIssues(issues)
+		// Fetch group path
+		groupPath, err := app.GetGroupPath(groupIDFlag)
+		if err != nil {
+			logrus.Warnf("Failed to fetch group path: %v", err)
+			groupPath = fmt.Sprintf("ID:%d", groupIDFlag)
+		}
+
+		// Fetch project paths for all issues
+		projectMap, err := app.GetProjectPathsForIssues(issues)
+		if err != nil {
+			logrus.Warnf("Failed to fetch project paths: %v", err)
+			// Fall back to rendering without context
+			return renderIssues(issues)
+		}
+
+		// Create context and render
+		context := render.NewGroupContext(groupPath, projectMap)
+		return renderIssuesWithContext(issues, context)
 	},
 }
