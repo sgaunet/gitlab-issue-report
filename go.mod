@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.2
 	gitlab.com/gitlab-org/api/client-go v1.11.0
-	gopkg.in/ini.v1 v1.67.0
+	gopkg.in/ini.v1 v1.67.1
 )
 
 require (
