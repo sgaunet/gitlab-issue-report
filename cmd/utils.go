@@ -25,21 +25,21 @@ type commandInit struct {
 // initIssueCommand runs the common init pipeline for project and group commands:
 // flag reconciliation, logging, environment, timeout, timezone, interval parsing,
 // and GitLab client creation.
-func initIssueCommand(cmd *cobra.Command) (*commandInit, error) {
-	if err := reconcileFlags(cmd); err != nil {
+func initIssueCommand(o *commandOptions, cmd *cobra.Command) (*commandInit, error) {
+	if err := reconcileFlags(o); err != nil {
 		return nil, err
 	}
-	initTrace(logLevel)
+	initTrace(o.logLevel)
 	if err := setupEnvironment(); err != nil {
 		return nil, err
 	}
-	applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
-	applyTimezoneFromEnv(cmd.Flags().Changed("timezone"))
-	beginTime, endTime, err := parseInterval(interval, timezone)
+	applyTimeoutFromEnv(o, cmd.Flags().Changed("api-timeout"))
+	applyTimezoneFromEnv(o, cmd.Flags().Changed("timezone"))
+	beginTime, endTime, err := parseInterval(o.interval, o.timezone)
 	if err != nil {
 		return nil, err
 	}
-	app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
+	app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), o.apiTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GitLab client: %w", err)
 	}
@@ -70,7 +70,7 @@ func setupEnvironment() error {
 
 // applyTimeoutFromEnv applies timeout from environment variable if flag not explicitly set.
 // This must be called after flag parsing in command execution context.
-func applyTimeoutFromEnv(flagChanged bool) {
+func applyTimeoutFromEnv(o *commandOptions, flagChanged bool) {
 	// Only apply environment variable if flag was not explicitly set
 	if !flagChanged {
 		if timeoutEnv := os.Getenv("GITLAB_API_TIMEOUT"); timeoutEnv != "" {
@@ -78,8 +78,8 @@ func applyTimeoutFromEnv(flagChanged bool) {
 			if err != nil {
 				logrus.Warnf("%v: '%s', using default %v", errInvalidAPITimeoutValue, timeoutEnv, defaultAPITimeout)
 			} else {
-				apiTimeout = parsed
-				logrus.Debugf("Using API timeout from environment: %v", apiTimeout)
+				o.apiTimeout = parsed
+				logrus.Debugf("Using API timeout from environment: %v", o.apiTimeout)
 			}
 		}
 	}
@@ -87,11 +87,11 @@ func applyTimeoutFromEnv(flagChanged bool) {
 
 // applyTimezoneFromEnv applies timezone from environment variable if flag not explicitly set.
 // This must be called after flag parsing in command execution context.
-func applyTimezoneFromEnv(flagChanged bool) {
+func applyTimezoneFromEnv(o *commandOptions, flagChanged bool) {
 	if !flagChanged {
 		if tzEnv := os.Getenv("GITLAB_TIMEZONE"); tzEnv != "" {
-			timezone = tzEnv
-			logrus.Debugf("Using timezone from environment: %s", timezone)
+			o.timezone = tzEnv
+			logrus.Debugf("Using timezone from environment: %s", o.timezone)
 		}
 	}
 }
@@ -116,8 +116,8 @@ func createGitlabClient(token, uri string, timeout time.Duration) (*gitlab.Clien
 }
 
 // getCurrentUsername fetches the username of the currently authenticated user.
-func getCurrentUsername() (string, error) {
-	gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
+func getCurrentUsername(timeout time.Duration) (string, error) {
+	gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), timeout)
 	if err != nil {
 		return "", err
 	}
@@ -158,21 +158,23 @@ func parseInterval(interval, tz string) (time.Time, time.Time, error) {
 }
 
 // buildIssueOptions creates the options for retrieving issues.
-func buildIssueOptions(projectID, groupID int64, beginTime, endTime time.Time) ([]core.GetIssuesOption, error) {
+func buildIssueOptions(
+	o *commandOptions, projectID, groupID int64, beginTime, endTime time.Time,
+) ([]core.GetIssuesOption, error) {
 	var options []core.GetIssuesOption
 
 	// Add ID options
 	options = addIDOptions(options, projectID, groupID)
 
 	// Add date filter options
-	options = addDateFilterOptions(options, beginTime, endTime)
+	options = addDateFilterOptions(o, options, beginTime, endTime)
 
 	// Add status filter options
-	options = addStatusFilterOptions(options)
+	options = addStatusFilterOptions(o, options)
 
 	// Add assignee filter options
 	var err error
-	options, err = addAssigneeFilterOptions(options)
+	options, err = addAssigneeFilterOptions(o, options)
 	if err != nil {
 		return nil, err
 	}
@@ -193,16 +195,17 @@ func addIDOptions(options []core.GetIssuesOption, projectID, groupID int64) []co
 
 // addDateFilterOptions adds date filter options based on configuration.
 func addDateFilterOptions(
+	o *commandOptions,
 	options []core.GetIssuesOption,
 	beginTime, endTime time.Time,
 ) []core.GetIssuesOption {
 	if !beginTime.IsZero() {
 		switch {
-		case createdFilter && !updatedFilter:
+		case o.createdFilter && !o.updatedFilter:
 			options = append(options, core.WithFilterCreatedAt(beginTime, endTime))
-		case updatedFilter && !createdFilter:
+		case o.updatedFilter && !o.createdFilter:
 			options = append(options, core.WithFilterUpdatedAt(beginTime, endTime))
-		case !createdFilter && !updatedFilter:
+		case !o.createdFilter && !o.updatedFilter:
 			// Default behavior: use updated filter when interval is set but no filter specified
 			options = append(options, core.WithFilterUpdatedAt(beginTime, endTime))
 		}
@@ -212,8 +215,8 @@ func addDateFilterOptions(
 }
 
 // addStatusFilterOptions adds status filter options based on configuration.
-func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOption {
-	switch stateFilter {
+func addStatusFilterOptions(o *commandOptions, options []core.GetIssuesOption) []core.GetIssuesOption {
+	switch o.stateFilter {
 	case "opened":
 		options = append(options, core.WithOpenedIssues())
 	case "closed":
@@ -227,9 +230,9 @@ func addStatusFilterOptions(options []core.GetIssuesOption) []core.GetIssuesOpti
 }
 
 // addAssigneeFilterOptions adds assignee filter options based on mine flag.
-func addAssigneeFilterOptions(options []core.GetIssuesOption) ([]core.GetIssuesOption, error) {
-	if mineOption {
-		username, err := getCurrentUsername()
+func addAssigneeFilterOptions(o *commandOptions, options []core.GetIssuesOption) ([]core.GetIssuesOption, error) {
+	if o.mineOption {
+		username, err := getCurrentUsername(o.apiTimeout)
 		if err != nil {
 			return nil, err
 		}
@@ -256,15 +259,15 @@ func initTrace(debugLevel string) {
 }
 
 // renderIssues renders the issues based on the format flag.
-func renderIssues(issues []*gitlab.Issue) error {
-	return renderIssuesWithContext(issues, nil)
+func renderIssues(issues []*gitlab.Issue, format string) error {
+	return renderIssuesWithContext(issues, nil, format)
 }
 
 // renderIssuesWithContext renders issues with optional rendering context.
-func renderIssuesWithContext(issues []*gitlab.Issue, context *render.Context) error {
+func renderIssuesWithContext(issues []*gitlab.Issue, context *render.Context, format string) error {
 	var renderer render.Renderer
 
-	switch formatOutput {
+	switch format {
 	case "markdown":
 		renderer = render.NewMarkdownRenderer()
 	case "table":
