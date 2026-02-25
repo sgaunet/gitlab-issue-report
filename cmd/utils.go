@@ -53,6 +53,17 @@ func applyTimeoutFromEnv(flagChanged bool) {
 	}
 }
 
+// applyTimezoneFromEnv applies timezone from environment variable if flag not explicitly set.
+// This must be called after flag parsing in command execution context.
+func applyTimezoneFromEnv(flagChanged bool) {
+	if !flagChanged {
+		if tzEnv := os.Getenv("GITLAB_TIMEZONE"); tzEnv != "" {
+			timezone = tzEnv
+			logrus.Debugf("Using timezone from environment: %s", timezone)
+		}
+	}
+}
+
 // createGitlabClient creates a GitLab client with custom HTTP timeout.
 func createGitlabClient(token, uri string, timeout time.Duration) (*gitlab.Client, error) {
 	httpClient := &http.Client{
@@ -89,13 +100,14 @@ func getCurrentUsername() (string, error) {
 }
 
 // parseInterval parses the interval flag and returns the begin and end times.
-func parseInterval(interval string) (time.Time, time.Time, error) {
+// The tz parameter specifies the timezone for date calculations (e.g., "America/New_York", "UTC").
+// An empty tz string uses the system local timezone.
+func parseInterval(interval, tz string) (time.Time, time.Time, error) {
 	var beginTime, endTime time.Time
 	if interval == "" {
 		return time.Time{}, time.Time{}, nil
 	}
 
-	tz := ""
 	dbegin, err := calcdatelib.NewDate(interval, "%YYYY/%MM/%DD %hh:%mm:%ss", tz)
 	if err != nil {
 		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse begin date: %w", err)

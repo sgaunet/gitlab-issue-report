@@ -26,6 +26,7 @@ var (
 	interval      string        // Date interval
 	mineOption    bool          // Filter issues assigned to current user
 	apiTimeout    time.Duration // API request timeout
+	timezone      string        // Timezone for date calculations
 )
 
 // rootCmd represents the base command when called without any subcommands.
@@ -42,6 +43,7 @@ AUTHENTICATION:
   Set the GITLAB_TOKEN environment variable with your GitLab personal access token.
   Optionally set GITLAB_URI for self-hosted instances (defaults to https://gitlab.com).
   Optionally set GITLAB_API_TIMEOUT for custom API timeout (e.g., "1m").
+  Optionally set GITLAB_TIMEZONE for date calculation timezone (e.g., "America/New_York").
 
 EXAMPLES:
   # Auto-detect project from current git repository
@@ -68,6 +70,9 @@ EXAMPLES:
   # Show only issues assigned to you
   gitlab-issue-report project --mine
 
+  # Use a specific timezone for date calculations
+  gitlab-issue-report project -i "/-7/ ::" --timezone "America/New_York"
+
 For more details on each subcommand:
   gitlab-issue-report project --help
   gitlab-issue-report group --help`,
@@ -87,6 +92,8 @@ func init() {
 	// ===== PERSISTENT FLAGS (ALL COMMANDS) =====
 	rootCmd.PersistentFlags().DurationVar(&apiTimeout, "api-timeout", defaultAPITimeout,
 		"Timeout for GitLab API requests (e.g., 30s, 1m)")
+	rootCmd.PersistentFlags().StringVarP(&timezone, "timezone", "T", "",
+		"Timezone for date calculations (e.g., America/New_York, UTC, Local)")
 
 	// ===== PROJECT COMMAND FLAGS =====
 
