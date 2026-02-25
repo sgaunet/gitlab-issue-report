@@ -59,7 +59,6 @@ EXAMPLES:
 
 		// Setup environment.
 		if err := setupEnvironment(); err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
@@ -72,7 +71,6 @@ EXAMPLES:
 		// Parse interval if provided.
 		beginTime, endTime, err := parseInterval(interval, timezone)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
@@ -81,7 +79,6 @@ EXAMPLES:
 		if finalProjectID == 0 {
 			finalProjectID, err = findProjectID()
 			if err != nil {
-				logrus.Errorln(err.Error())
 				return err
 			}
 		}
@@ -89,21 +86,18 @@ EXAMPLES:
 		// Create GitLab client.
 		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return fmt.Errorf("failed to create GitLab client: %w", err)
 		}
 
 		// Build issue retrieval options.
 		options, err := buildIssueOptions(finalProjectID, 0, beginTime, endTime)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
 		// Get and display issues.
 		issues, err := app.GetIssues(options...)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
@@ -203,14 +197,12 @@ func findProject(remoteOrigin string) (project, error) {
 
 	git, err := createGitlabClient(gitlabToken, gitlabURI, apiTimeout)
 	if err != nil {
-		logrus.Errorf("Failed to create GitLab client: %v", err)
 		return project{}, fmt.Errorf("failed to create GitLab client: %w", err)
 	}
 
 	searchOpts := &gitlab.SearchOptions{}
 	foundProjects, _, err := git.Search.Projects(projectName, searchOpts)
 	if err != nil {
-		logrus.Errorf("Failed to search for project '%s': %v", projectName, err)
 		return project{}, fmt.Errorf("failed to search for project '%s': %w", projectName, err)
 	}
 
