@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sgaunet/gitlab-issue-report/internal/core"
 	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -49,27 +48,7 @@ EXAMPLES:
   # Only issues assigned to you
   gitlab-issue-report project --mine`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		// Reconcile old and new flags.
-		if err := reconcileFlags(cmd); err != nil {
-			return err
-		}
-
-		// Initialize logging with new log level variable.
-		initTrace(logLevel)
-
-		// Setup environment.
-		if err := setupEnvironment(); err != nil {
-			return err
-		}
-
-		// Apply timeout from environment variable if flag not set.
-		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
-
-		// Apply timezone from environment variable if flag not set.
-		applyTimezoneFromEnv(cmd.Flags().Changed("timezone"))
-
-		// Parse interval if provided.
-		beginTime, endTime, err := parseInterval(interval, timezone)
+		init, err := initIssueCommand(cmd)
 		if err != nil {
 			return err
 		}
@@ -83,26 +62,20 @@ EXAMPLES:
 			}
 		}
 
-		// Create GitLab client.
-		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
-		if err != nil {
-			return fmt.Errorf("failed to create GitLab client: %w", err)
-		}
-
 		// Build issue retrieval options.
-		options, err := buildIssueOptions(finalProjectID, 0, beginTime, endTime)
+		options, err := buildIssueOptions(finalProjectID, 0, init.beginTime, init.endTime)
 		if err != nil {
 			return err
 		}
 
 		// Get and display issues.
-		issues, err := app.GetIssues(options...)
+		issues, err := init.app.GetIssues(options...)
 		if err != nil {
 			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
 		// Fetch project path for context
-		projectPath, err := app.GetProjectPath(finalProjectID)
+		projectPath, err := init.app.GetProjectPath(finalProjectID)
 		if err != nil {
 			logrus.Warnf("Failed to fetch project path: %v", err)
 			// Fall back to rendering without context
