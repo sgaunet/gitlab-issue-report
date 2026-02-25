@@ -43,9 +43,8 @@ EXAMPLES:
 
 		// Check if group ID is provided
 		if groupIDFlag == 0 {
-			logrus.Errorln("Group ID is required. Please provide it with the --group-id or --group flag.")
 			if err := cmd.Help(); err != nil {
-				logrus.Errorln("Failed to display help:", err)
+				logrus.Warnf("Failed to display help: %v", err)
 			}
 			return errGroupIDRequired
 		}
@@ -55,7 +54,6 @@ EXAMPLES:
 
 		// Setup environment
 		if err := setupEnvironment(); err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
@@ -68,28 +66,24 @@ EXAMPLES:
 		// Parse interval if provided
 		beginTime, endTime, err := parseInterval(interval, timezone)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
 		// Create GitLab client
 		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return fmt.Errorf("failed to create GitLab client: %w", err)
 		}
 
 		// Build issue retrieval options
 		options, err := buildIssueOptions(0, groupIDFlag, beginTime, endTime)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
 		// Get and display issues
 		issues, err := app.GetIssues(options...)
 		if err != nil {
-			logrus.Errorln(err.Error())
 			return fmt.Errorf("failed to get issues: %w", err)
 		}
 

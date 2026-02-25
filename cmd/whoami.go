@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
@@ -17,7 +16,6 @@ var whoamiCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Setup environment (validates GITLAB_TOKEN and sets default GITLAB_URI)
 		if err := setupEnvironment(); err != nil {
-			logrus.Errorln(err.Error())
 			return err
 		}
 
@@ -27,14 +25,12 @@ var whoamiCmd = &cobra.Command{
 		// Create GitLab client
 		gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
 		if err != nil {
-			logrus.Errorln("Failed to create GitLab client:", err.Error())
 			return err
 		}
 
 		// Fetch current user information
 		user, _, err := gitlabClient.Users.CurrentUser()
 		if err != nil {
-			logrus.Errorln("Failed to fetch user information:", err.Error())
 			return fmt.Errorf("failed to fetch user information: %w", err)
 		}
 
