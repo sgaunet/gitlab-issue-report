@@ -31,9 +31,46 @@ var (
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "gitlab-issue-report",
-	Short: "Tool to get issues of a gitlab project or group.",
-	Long: `Tool to get issues of a gitlab project or group. 
-	`,
+	Short: "Report and filter GitLab issues from projects and groups",
+	Long: `gitlab-issue-report - A CLI tool to fetch and display GitLab issues.
+
+Retrieves issues from GitLab projects or groups with filtering options.
+Supports multiple output formats and can auto-detect your project from
+the current git repository.
+
+AUTHENTICATION:
+  Set the GITLAB_TOKEN environment variable with your GitLab personal access token.
+  Optionally set GITLAB_URI for self-hosted instances (defaults to https://gitlab.com).
+  Optionally set GITLAB_API_TIMEOUT for custom API timeout (e.g., "1m").
+
+EXAMPLES:
+  # Auto-detect project from current git repository
+  gitlab-issue-report project
+
+  # Specify a project ID explicitly
+  gitlab-issue-report project -p 12345
+
+  # Get issues from a group
+  gitlab-issue-report group -g 678
+
+  # Filter by date interval (last 7 days)
+  gitlab-issue-report project -i "/-7/ ::"
+
+  # Get only closed issues
+  gitlab-issue-report project --state closed
+
+  # Output as a markdown table
+  gitlab-issue-report project --format markdown
+
+  # Combine filters: closed issues from last 30 days
+  gitlab-issue-report project -p 12345 -i "/-30/ ::" --state closed --format table
+
+  # Show only issues assigned to you
+  gitlab-issue-report project --mine
+
+For more details on each subcommand:
+  gitlab-issue-report project --help
+  gitlab-issue-report group --help`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
