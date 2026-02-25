@@ -9,6 +9,7 @@ import (
 
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
 	"github.com/sgaunet/gitlab-issue-report/internal/render"
+	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
@@ -771,6 +772,101 @@ func TestValidateTimezone(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestInitIssueCommand tests the shared init pipeline for issue commands.
+func TestInitIssueCommand(t *testing.T) {
+	// Save original global state
+	origLogLevel := logLevel
+	origInterval := interval
+	origTimezone := timezone
+	origTimeout := apiTimeout
+
+	defer func() {
+		logLevel = origLogLevel
+		interval = origInterval
+		timezone = origTimezone
+		apiTimeout = origTimeout
+	}()
+
+	// Helper to create a minimal cobra command with required flags.
+	newTestCmd := func() *cobra.Command {
+		cmd := &cobra.Command{Use: "test"}
+		cmd.Flags().String("log-level", "error", "")
+		cmd.Flags().Bool("debug", false, "")
+		cmd.Flags().Bool("verbose", false, "")
+		cmd.Flags().String("state", "", "")
+		cmd.Flags().String("format", "plain", "")
+		cmd.Flags().Bool("created", false, "")
+		cmd.Flags().Bool("updated", false, "")
+		cmd.Flags().String("interval", "", "")
+		cmd.Flags().Duration("api-timeout", defaultAPITimeout, "")
+		cmd.Flags().String("timezone", "", "")
+		return cmd
+	}
+
+	t.Run("succeeds with valid environment", func(t *testing.T) {
+		origToken := os.Getenv("GITLAB_TOKEN")
+		origURI := os.Getenv("GITLAB_URI")
+		defer func() {
+			os.Setenv("GITLAB_TOKEN", origToken)
+			os.Setenv("GITLAB_URI", origURI)
+		}()
+
+		os.Setenv("GITLAB_TOKEN", "test-token")
+		os.Setenv("GITLAB_URI", "https://gitlab.example.com")
+		interval = ""
+		logLevel = "error"
+
+		result, err := initIssueCommand(newTestCmd())
+		if err != nil {
+			t.Fatalf("initIssueCommand() unexpected error: %v", err)
+		}
+		if result.app == nil {
+			t.Error("initIssueCommand() result.app is nil")
+		}
+		if !result.beginTime.IsZero() || !result.endTime.IsZero() {
+			t.Error("initIssueCommand() expected zero times for empty interval")
+		}
+	})
+
+	t.Run("fails without GITLAB_TOKEN", func(t *testing.T) {
+		origToken := os.Getenv("GITLAB_TOKEN")
+		defer func() {
+			os.Setenv("GITLAB_TOKEN", origToken)
+		}()
+
+		os.Unsetenv("GITLAB_TOKEN")
+		interval = ""
+		logLevel = "error"
+
+		_, err := initIssueCommand(newTestCmd())
+		if err == nil {
+			t.Fatal("initIssueCommand() expected error without GITLAB_TOKEN")
+		}
+	})
+
+	t.Run("parses interval", func(t *testing.T) {
+		origToken := os.Getenv("GITLAB_TOKEN")
+		origURI := os.Getenv("GITLAB_URI")
+		defer func() {
+			os.Setenv("GITLAB_TOKEN", origToken)
+			os.Setenv("GITLAB_URI", origURI)
+		}()
+
+		os.Setenv("GITLAB_TOKEN", "test-token")
+		os.Setenv("GITLAB_URI", "https://gitlab.example.com")
+		interval = "/-1/ ::"
+		logLevel = "error"
+
+		result, err := initIssueCommand(newTestCmd())
+		if err != nil {
+			t.Fatalf("initIssueCommand() unexpected error: %v", err)
+		}
+		if result.beginTime.IsZero() || result.endTime.IsZero() {
+			t.Error("initIssueCommand() expected non-zero times for valid interval")
+		}
+	})
 }
 
 // TestApplyTimezoneFromEnv tests the applyTimezoneFromEnv function.

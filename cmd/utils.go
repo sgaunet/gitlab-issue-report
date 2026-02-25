@@ -11,8 +11,40 @@ import (
 	"github.com/sgaunet/gitlab-issue-report/internal/core"
 	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
+
+// commandInit holds the shared initialization result for issue commands.
+type commandInit struct {
+	beginTime time.Time
+	endTime   time.Time
+	app       *core.App
+}
+
+// initIssueCommand runs the common init pipeline for project and group commands:
+// flag reconciliation, logging, environment, timeout, timezone, interval parsing,
+// and GitLab client creation.
+func initIssueCommand(cmd *cobra.Command) (*commandInit, error) {
+	if err := reconcileFlags(cmd); err != nil {
+		return nil, err
+	}
+	initTrace(logLevel)
+	if err := setupEnvironment(); err != nil {
+		return nil, err
+	}
+	applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
+	applyTimezoneFromEnv(cmd.Flags().Changed("timezone"))
+	beginTime, endTime, err := parseInterval(interval, timezone)
+	if err != nil {
+		return nil, err
+	}
+	app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GitLab client: %w", err)
+	}
+	return &commandInit{beginTime: beginTime, endTime: endTime, app: app}, nil
+}
 
 var (
 	errGitlabTokenNotSet      = errors.New("GITLAB_TOKEN environment variable is not set")

@@ -3,9 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 
-	"github.com/sgaunet/gitlab-issue-report/internal/core"
 	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -36,8 +34,8 @@ EXAMPLES:
   # Only issues assigned to you
   gitlab-issue-report group -g 678 --mine`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		// Reconcile old and new flags
-		if err := reconcileFlags(cmd); err != nil {
+		init, err := initIssueCommand(cmd)
+		if err != nil {
 			return err
 		}
 
@@ -49,53 +47,27 @@ EXAMPLES:
 			return errGroupIDRequired
 		}
 
-		// Initialize logging with new log level variable
-		initTrace(logLevel)
-
-		// Setup environment
-		if err := setupEnvironment(); err != nil {
-			return err
-		}
-
-		// Apply timeout from environment variable if flag not set
-		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
-
-		// Apply timezone from environment variable if flag not set
-		applyTimezoneFromEnv(cmd.Flags().Changed("timezone"))
-
-		// Parse interval if provided
-		beginTime, endTime, err := parseInterval(interval, timezone)
-		if err != nil {
-			return err
-		}
-
-		// Create GitLab client
-		app, err := core.NewApp(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
-		if err != nil {
-			return fmt.Errorf("failed to create GitLab client: %w", err)
-		}
-
 		// Build issue retrieval options
-		options, err := buildIssueOptions(0, groupIDFlag, beginTime, endTime)
+		options, err := buildIssueOptions(0, groupIDFlag, init.beginTime, init.endTime)
 		if err != nil {
 			return err
 		}
 
 		// Get and display issues
-		issues, err := app.GetIssues(options...)
+		issues, err := init.app.GetIssues(options...)
 		if err != nil {
 			return fmt.Errorf("failed to get issues: %w", err)
 		}
 
 		// Fetch group path
-		groupPath, err := app.GetGroupPath(groupIDFlag)
+		groupPath, err := init.app.GetGroupPath(groupIDFlag)
 		if err != nil {
 			logrus.Warnf("Failed to fetch group path: %v", err)
 			groupPath = fmt.Sprintf("ID:%d", groupIDFlag)
 		}
 
 		// Fetch project paths for all issues
-		projectMap, err := app.GetProjectPathsForIssues(issues)
+		projectMap, err := init.app.GetProjectPathsForIssues(issues)
 		if err != nil {
 			logrus.Warnf("Failed to fetch project paths: %v", err)
 			// Fall back to rendering without context
