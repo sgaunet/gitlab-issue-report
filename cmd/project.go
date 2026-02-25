@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/sgaunet/gitlab-issue-report/internal/render"
 	"github.com/sirupsen/logrus"
@@ -48,22 +49,22 @@ EXAMPLES:
   # Only issues assigned to you
   gitlab-issue-report project --mine`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		init, err := initIssueCommand(cmd)
+		init, err := initIssueCommand(&opts, cmd)
 		if err != nil {
 			return err
 		}
 
 		// Find project ID if not specified.
-		finalProjectID := projectIDFlag
+		finalProjectID := opts.projectIDFlag
 		if finalProjectID == 0 {
-			finalProjectID, err = findProjectID()
+			finalProjectID, err = findProjectID(opts.apiTimeout)
 			if err != nil {
 				return err
 			}
 		}
 
 		// Build issue retrieval options.
-		options, err := buildIssueOptions(finalProjectID, 0, init.beginTime, init.endTime)
+		options, err := buildIssueOptions(&opts, finalProjectID, 0, init.beginTime, init.endTime)
 		if err != nil {
 			return err
 		}
@@ -79,17 +80,17 @@ EXAMPLES:
 		if err != nil {
 			logrus.Warnf("Failed to fetch project path: %v", err)
 			// Fall back to rendering without context
-			return renderIssues(issues)
+			return renderIssues(issues, opts.formatOutput)
 		}
 
 		// Create context and render
 		context := render.NewProjectContext(projectPath)
-		return renderIssuesWithContext(issues, context)
+		return renderIssuesWithContext(issues, context, opts.formatOutput)
 	},
 }
 
 // findProjectID attempts to determine the project ID if not specified.
-func findProjectID() (int64, error) {
+func findProjectID(timeout time.Duration) (int64, error) {
 	// Try to find git repository and project.
 	gitFolder, err := findGitRepository()
 	if err != nil {
@@ -103,7 +104,7 @@ func findProjectID() (int64, error) {
 		return 0, err
 	}
 
-	project, err := findProject(remoteOrigin)
+	project, err := findProject(remoteOrigin, timeout)
 	if err != nil {
 		return 0, err
 	}
@@ -153,7 +154,7 @@ type project struct {
 }
 
 // findProject searches for a project in GitLab based on the remote origin URL.
-func findProject(remoteOrigin string) (project, error) {
+func findProject(remoteOrigin string, timeout time.Duration) (project, error) {
 	projectName := filepath.Base(remoteOrigin)
 	projectName = strings.ReplaceAll(projectName, ".git", "")
 	logrus.Infof("Try to find project %s in %s\n", projectName, os.Getenv("GITLAB_URI"))
@@ -168,7 +169,7 @@ func findProject(remoteOrigin string) (project, error) {
 		logrus.Warnf("GITLAB_URI not set, defaulting to %s", gitlabURI)
 	}
 
-	git, err := createGitlabClient(gitlabToken, gitlabURI, apiTimeout)
+	git, err := createGitlabClient(gitlabToken, gitlabURI, timeout)
 	if err != nil {
 		return project{}, fmt.Errorf("failed to create GitLab client: %w", err)
 	}

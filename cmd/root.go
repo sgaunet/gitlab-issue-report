@@ -12,8 +12,8 @@ const (
 	defaultAPITimeout = 30 * time.Second // Default timeout for GitLab API requests
 )
 
-// CLI flag variables.
-var (
+// commandOptions holds all CLI flag values for issue commands.
+type commandOptions struct {
 	logLevel      string        // Log level: info, warn, error, debug
 	projectIDFlag int64         // Project ID
 	groupIDFlag   int64         // Group ID
@@ -27,7 +27,10 @@ var (
 	mineOption    bool          // Filter issues assigned to current user
 	apiTimeout    time.Duration // API request timeout
 	timezone      string        // Timezone for date calculations
-)
+}
+
+// opts is the package-level command options instance for Cobra flag binding.
+var opts commandOptions
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
@@ -90,56 +93,58 @@ func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	// ===== PERSISTENT FLAGS (ALL COMMANDS) =====
-	rootCmd.PersistentFlags().DurationVar(&apiTimeout, "api-timeout", defaultAPITimeout,
+	rootCmd.PersistentFlags().DurationVar(&opts.apiTimeout, "api-timeout", defaultAPITimeout,
 		"Timeout for GitLab API requests (e.g., 30s, 1m)")
-	rootCmd.PersistentFlags().StringVarP(&timezone, "timezone", "T", "",
+	rootCmd.PersistentFlags().StringVarP(&opts.timezone, "timezone", "T", "",
 		"Timezone for date calculations (e.g., America/New_York, UTC, Local)")
 
 	// ===== PROJECT COMMAND FLAGS =====
 
 	// Project command flags
-	projectCmd.Flags().StringVarP(&interval, "interval", "i", "", "Date interval (e.g., '/-1/ ::' for last month)")
-	projectCmd.Flags().StringVar(&logLevel, "log-level", "error", "Log level: info, warn, error, debug")
-	projectCmd.Flags().BoolVarP(&debugFlag, "debug", "d", false, "Enable debug logging (shorthand for --log-level=debug)")
-	projectCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false,
+	projectCmd.Flags().StringVarP(&opts.interval, "interval", "i", "", "Date interval (e.g., '/-1/ ::' for last month)")
+	projectCmd.Flags().StringVar(&opts.logLevel, "log-level", "error", "Log level: info, warn, error, debug")
+	projectCmd.Flags().BoolVarP(&opts.debugFlag, "debug", "d", false,
+		"Enable debug logging (shorthand for --log-level=debug)")
+	projectCmd.Flags().BoolVarP(&opts.verboseFlag, "verbose", "v", false,
 		"Enable verbose logging (shorthand for --log-level=info)")
 
-	projectCmd.Flags().Int64Var(&projectIDFlag, "project-id", 0,
+	projectCmd.Flags().Int64Var(&opts.projectIDFlag, "project-id", 0,
 		"Project ID to get issues from (auto-detected from git if not set)")
-	projectCmd.Flags().Int64VarP(&projectIDFlag, "project", "p", 0, "Project ID (alias for --project-id)")
+	projectCmd.Flags().Int64VarP(&opts.projectIDFlag, "project", "p", 0, "Project ID (alias for --project-id)")
 
-	projectCmd.Flags().BoolVar(&createdFilter, "created", false,
+	projectCmd.Flags().BoolVar(&opts.createdFilter, "created", false,
 		"Filter issues by creation date (requires --interval)")
-	projectCmd.Flags().BoolVarP(&updatedFilter, "updated", "U", false,
+	projectCmd.Flags().BoolVarP(&opts.updatedFilter, "updated", "U", false,
 		"Filter issues by update date (requires --interval)")
 
-	projectCmd.Flags().StringVar(&stateFilter, "state", "", "Filter by state: opened, closed, all")
-	projectCmd.Flags().StringVar(&formatOutput, "format", "plain", "Output format: plain, table, markdown")
+	projectCmd.Flags().StringVar(&opts.stateFilter, "state", "", "Filter by state: opened, closed, all")
+	projectCmd.Flags().StringVar(&opts.formatOutput, "format", "plain", "Output format: plain, table, markdown")
 
-	projectCmd.Flags().BoolVarP(&mineOption, "mine", "M", false, "Only issues assigned to current user")
+	projectCmd.Flags().BoolVarP(&opts.mineOption, "mine", "M", false, "Only issues assigned to current user")
 
 	rootCmd.AddCommand(projectCmd)
 
 	// ===== GROUP COMMAND FLAGS =====
 
 	// Group command flags
-	groupCmd.Flags().StringVarP(&interval, "interval", "i", "", "Date interval (e.g., '/-1/ ::' for last month)")
-	groupCmd.Flags().StringVar(&logLevel, "log-level", "error", "Log level: info, warn, error, debug")
-	groupCmd.Flags().BoolVarP(&debugFlag, "debug", "d", false,
+	groupCmd.Flags().StringVarP(&opts.interval, "interval", "i", "", "Date interval (e.g., '/-1/ ::' for last month)")
+	groupCmd.Flags().StringVar(&opts.logLevel, "log-level", "error", "Log level: info, warn, error, debug")
+	groupCmd.Flags().BoolVarP(&opts.debugFlag, "debug", "d", false,
 		"Enable debug logging (shorthand for --log-level=debug)")
-	groupCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false,
+	groupCmd.Flags().BoolVarP(&opts.verboseFlag, "verbose", "v", false,
 		"Enable verbose logging (shorthand for --log-level=info)")
 
-	groupCmd.Flags().Int64Var(&groupIDFlag, "group-id", 0, "Group ID to get issues from (required)")
-	groupCmd.Flags().Int64VarP(&groupIDFlag, "group", "g", 0, "Group ID (alias for --group-id)")
+	groupCmd.Flags().Int64Var(&opts.groupIDFlag, "group-id", 0, "Group ID to get issues from (required)")
+	groupCmd.Flags().Int64VarP(&opts.groupIDFlag, "group", "g", 0, "Group ID (alias for --group-id)")
 
-	groupCmd.Flags().BoolVar(&createdFilter, "created", false, "Filter issues by creation date (requires --interval)")
-	groupCmd.Flags().BoolVarP(&updatedFilter, "updated", "U", false, "Filter issues by update date (requires --interval)")
+	groupCmd.Flags().BoolVar(&opts.createdFilter, "created", false, "Filter issues by creation date (requires --interval)")
+	groupCmd.Flags().BoolVarP(&opts.updatedFilter, "updated", "U", false,
+		"Filter issues by update date (requires --interval)")
 
-	groupCmd.Flags().StringVar(&stateFilter, "state", "", "Filter by state: opened, closed, all")
-	groupCmd.Flags().StringVar(&formatOutput, "format", "plain", "Output format: plain, table, markdown")
+	groupCmd.Flags().StringVar(&opts.stateFilter, "state", "", "Filter by state: opened, closed, all")
+	groupCmd.Flags().StringVar(&opts.formatOutput, "format", "plain", "Output format: plain, table, markdown")
 
-	groupCmd.Flags().BoolVarP(&mineOption, "mine", "M", false, "Only issues assigned to current user")
+	groupCmd.Flags().BoolVarP(&opts.mineOption, "mine", "M", false, "Only issues assigned to current user")
 
 	rootCmd.AddCommand(groupCmd)
 }

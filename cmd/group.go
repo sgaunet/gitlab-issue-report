@@ -34,13 +34,13 @@ EXAMPLES:
   # Only issues assigned to you
   gitlab-issue-report group -g 678 --mine`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		init, err := initIssueCommand(cmd)
+		init, err := initIssueCommand(&opts, cmd)
 		if err != nil {
 			return err
 		}
 
 		// Check if group ID is provided
-		if groupIDFlag == 0 {
+		if opts.groupIDFlag == 0 {
 			if err := cmd.Help(); err != nil {
 				logrus.Warnf("Failed to display help: %v", err)
 			}
@@ -48,7 +48,7 @@ EXAMPLES:
 		}
 
 		// Build issue retrieval options
-		options, err := buildIssueOptions(0, groupIDFlag, init.beginTime, init.endTime)
+		options, err := buildIssueOptions(&opts, 0, opts.groupIDFlag, init.beginTime, init.endTime)
 		if err != nil {
 			return err
 		}
@@ -60,10 +60,10 @@ EXAMPLES:
 		}
 
 		// Fetch group path
-		groupPath, err := init.app.GetGroupPath(groupIDFlag)
+		groupPath, err := init.app.GetGroupPath(opts.groupIDFlag)
 		if err != nil {
 			logrus.Warnf("Failed to fetch group path: %v", err)
-			groupPath = fmt.Sprintf("ID:%d", groupIDFlag)
+			groupPath = fmt.Sprintf("ID:%d", opts.groupIDFlag)
 		}
 
 		// Fetch project paths for all issues
@@ -71,11 +71,11 @@ EXAMPLES:
 		if err != nil {
 			logrus.Warnf("Failed to fetch project paths: %v", err)
 			// Fall back to rendering without context
-			return renderIssues(issues)
+			return renderIssues(issues, opts.formatOutput)
 		}
 
 		// Create context and render
 		context := render.NewGroupContext(groupPath, projectMap)
-		return renderIssuesWithContext(issues, context)
+		return renderIssuesWithContext(issues, context, opts.formatOutput)
 	},
 }

@@ -20,10 +20,10 @@ var whoamiCmd = &cobra.Command{
 		}
 
 		// Apply timeout from environment variable if flag not set
-		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
+		applyTimeoutFromEnv(&opts, cmd.Flags().Changed("api-timeout"))
 
 		// Create GitLab client
-		gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), apiTimeout)
+		gitlabClient, err := createGitlabClient(os.Getenv("GITLAB_TOKEN"), os.Getenv("GITLAB_URI"), opts.apiTimeout)
 		if err != nil {
 			return err
 		}

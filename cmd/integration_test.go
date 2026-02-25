@@ -37,12 +37,9 @@ func TestRenderIssues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set the format flag
-			formatOutput = tt.format
-
 			// Use the renderer directly instead of capturing stdout
 			var renderer render.Renderer
-			switch formatOutput {
+			switch tt.format {
 			case "markdown":
 				renderer = render.NewMarkdownRenderer()
 			case "table":
@@ -73,62 +70,45 @@ func TestRenderIssues(t *testing.T) {
 // TestBuildIssueOptions tests the buildIssueOptions function.
 func TestBuildIssueOptions(t *testing.T) {
 	tests := []struct {
-		name             string
-		projectID        int64
-		groupID          int64
-		stateFilter      string
-		createdFilter    bool
-		updatedFilter    bool
-		expectedContains []string
+		name      string
+		opts      commandOptions
+		projectID int64
+		groupID   int64
 	}{
 		{
-			name:             "project only",
-			projectID:        123,
-			groupID:          0,
-			stateFilter:      "",
-			createdFilter:    false,
-			updatedFilter:    false,
-			expectedContains: []string{}, // Can't easily test functional options, but we can test the function doesn't panic
+			name: "project only",
+			opts: commandOptions{
+				formatOutput: "plain",
+				apiTimeout:   defaultAPITimeout,
+			},
+			projectID: 123,
+			groupID:   0,
 		},
 		{
-			name:             "group only",
-			projectID:        0,
-			groupID:          456,
-			stateFilter:      "",
-			createdFilter:    false,
-			updatedFilter:    false,
-			expectedContains: []string{},
+			name: "group only",
+			opts: commandOptions{
+				formatOutput: "plain",
+				apiTimeout:   defaultAPITimeout,
+			},
+			projectID: 0,
+			groupID:   456,
 		},
 		{
-			name:             "with status filters",
-			projectID:        123,
-			groupID:          0,
-			stateFilter:      "closed",
-			createdFilter:    false,
-			updatedFilter:    false,
-			expectedContains: []string{},
+			name: "with status filters",
+			opts: commandOptions{
+				stateFilter:  "closed",
+				formatOutput: "plain",
+				apiTimeout:   defaultAPITimeout,
+			},
+			projectID: 123,
+			groupID:   0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set global variables to simulate CLI flags
-			originalState := stateFilter
-			originalCreated := createdFilter
-			originalUpdated := updatedFilter
-
-			defer func() {
-				stateFilter = originalState
-				createdFilter = originalCreated
-				updatedFilter = originalUpdated
-			}()
-
-			stateFilter = tt.stateFilter
-			createdFilter = tt.createdFilter
-			updatedFilter = tt.updatedFilter
-
 			// Call the function and ensure it doesn't panic
-			options, err := buildIssueOptions(tt.projectID, tt.groupID, time.Time{}, time.Time{})
+			options, err := buildIssueOptions(&tt.opts, tt.projectID, tt.groupID, time.Time{}, time.Time{})
 
 			if err != nil {
 				t.Errorf("buildIssueOptions() error = %v", err)
@@ -204,7 +184,7 @@ func TestInitTrace(t *testing.T) {
 					t.Errorf("initTrace() panicked: %v", r)
 				}
 			}()
-			
+
 			initTrace(tt.level)
 		})
 	}
@@ -215,12 +195,12 @@ func TestSetupEnvironment(t *testing.T) {
 	// Save original environment
 	originalToken := os.Getenv("GITLAB_TOKEN")
 	originalURI := os.Getenv("GITLAB_URI")
-	
+
 	defer func() {
 		os.Setenv("GITLAB_TOKEN", originalToken)
 		os.Setenv("GITLAB_URI", originalURI)
 	}()
-	
+
 	t.Run("with token and URI", func(t *testing.T) {
 		os.Setenv("GITLAB_TOKEN", "test-token")
 		os.Setenv("GITLAB_URI", "https://gitlab.example.com")
@@ -267,7 +247,7 @@ func TestSetupEnvironment(t *testing.T) {
 func createTestIssues() []*gitlab.Issue {
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)
-	
+
 	return []*gitlab.Issue{
 		{
 			ID:        1,
@@ -289,54 +269,54 @@ func createTestIssues() []*gitlab.Issue {
 // TestRendererIntegration tests the integration between CLI and renderers.
 func TestRendererIntegration(t *testing.T) {
 	issues := createTestIssues()
-	
+
 	t.Run("markdown renderer produces valid markdown", func(t *testing.T) {
 		renderer := render.NewMarkdownRenderer()
 		var buf bytes.Buffer
-		
+
 		err := renderer.Render(issues, &buf)
 		if err != nil {
 			t.Errorf("MarkdownRenderer.Render() error = %v", err)
 			return
 		}
-		
+
 		output := buf.String()
-		
+
 		// Check for valid markdown table structure
 		if !strings.Contains(output, "| Title | State |") {
 			t.Error("Markdown output missing table header")
 		}
-		
+
 		if !strings.Contains(output, "|-------|-------|") {
 			t.Error("Markdown output missing table separator")
 		}
-		
+
 		if !strings.Contains(output, "# GitLab Issues Report") {
 			t.Error("Markdown output missing title")
 		}
 	})
-	
+
 	t.Run("plain renderer produces readable output", func(t *testing.T) {
 		renderer := render.NewPlainRenderer(true)
 		var buf bytes.Buffer
-		
+
 		err := renderer.Render(issues, &buf)
 		if err != nil {
 			t.Errorf("PlainRenderer.Render() error = %v", err)
 			return
 		}
-		
+
 		output := buf.String()
-		
+
 		// Check for plain text structure
 		if !strings.Contains(output, "Title") {
 			t.Error("Plain output missing Title header")
 		}
-		
+
 		if !strings.Contains(output, "State") {
 			t.Error("Plain output missing State header")
 		}
-		
+
 		if !strings.Contains(output, "Fix authentication bug") {
 			t.Error("Plain output missing issue title")
 		}
@@ -371,16 +351,10 @@ func TestNewFormatFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save and restore formatOutput
-			originalFormat := formatOutput
-			defer func() { formatOutput = originalFormat }()
-
-			formatOutput = tt.format
-
 			var buf bytes.Buffer
 			var renderer render.Renderer
 
-			switch formatOutput {
+			switch tt.format {
 			case "markdown":
 				renderer = render.NewMarkdownRenderer()
 			case "table":
@@ -408,46 +382,35 @@ func TestNewFormatFlag(t *testing.T) {
 // TestStateFilterFunctionality tests the state filter with new flag.
 func TestStateFilterFunctionality(t *testing.T) {
 	tests := []struct {
-		name         string
-		stateFilter  string
-		expectOpened bool
-		expectClosed bool
+		name        string
+		stateFilter string
 	}{
 		{
-			name:         "state opened",
-			stateFilter:  "opened",
-			expectOpened: true,
-			expectClosed: false,
+			name:        "state opened",
+			stateFilter: "opened",
 		},
 		{
-			name:         "state closed",
-			stateFilter:  "closed",
-			expectOpened: false,
-			expectClosed: true,
+			name:        "state closed",
+			stateFilter: "closed",
 		},
 		{
-			name:         "state all",
-			stateFilter:  "all",
-			expectOpened: false,
-			expectClosed: false,
+			name:        "state all",
+			stateFilter: "all",
 		},
 		{
-			name:         "empty state",
-			stateFilter:  "",
-			expectOpened: false,
-			expectClosed: false,
+			name:        "empty state",
+			stateFilter: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save and restore stateFilter
-			originalState := stateFilter
-			defer func() { stateFilter = originalState }()
+			o := &commandOptions{
+				stateFilter: tt.stateFilter,
+				apiTimeout:  defaultAPITimeout,
+			}
 
-			stateFilter = tt.stateFilter
-
-			options := addStatusFilterOptions([]core.GetIssuesOption{})
+			options := addStatusFilterOptions(o, []core.GetIssuesOption{})
 
 			// We can't directly inspect the options, but we can verify the function doesn't panic
 			if options == nil {
@@ -461,71 +424,67 @@ func TestStateFilterFunctionality(t *testing.T) {
 func TestValidateFlags(t *testing.T) {
 	tests := []struct {
 		name          string
-		setup         func()
+		opts          commandOptions
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name: "valid state opened",
-			setup: func() {
-				stateFilter = "opened"
-				formatOutput = "plain"
-				createdFilter = false
-				updatedFilter = false
-				interval = ""
+			opts: commandOptions{
+				stateFilter:  "opened",
+				formatOutput: "plain",
+				apiTimeout:   defaultAPITimeout,
 			},
 			expectError: false,
 		},
 		{
 			name: "invalid state",
-			setup: func() {
-				stateFilter = "invalid"
-				formatOutput = "plain"
+			opts: commandOptions{
+				stateFilter:  "invalid",
+				formatOutput: "plain",
+				apiTimeout:   defaultAPITimeout,
 			},
 			expectError:   true,
 			errorContains: "invalid --state",
 		},
 		{
 			name: "invalid format",
-			setup: func() {
-				stateFilter = ""
-				formatOutput = "invalid"
+			opts: commandOptions{
+				formatOutput: "invalid",
+				apiTimeout:   defaultAPITimeout,
 			},
 			expectError:   true,
 			errorContains: "invalid --format",
 		},
 		{
 			name: "created filter without interval",
-			setup: func() {
-				stateFilter = ""
-				formatOutput = "plain"
-				createdFilter = true
-				updatedFilter = false
-				interval = ""
+			opts: commandOptions{
+				formatOutput:  "plain",
+				createdFilter: true,
+				apiTimeout:    defaultAPITimeout,
 			},
 			expectError:   true,
 			errorContains: "requires --interval",
 		},
 		{
 			name: "both created and updated filters",
-			setup: func() {
-				stateFilter = ""
-				formatOutput = "plain"
-				createdFilter = true
-				updatedFilter = true
-				interval = "/-1/ ::"
+			opts: commandOptions{
+				formatOutput:  "plain",
+				createdFilter: true,
+				updatedFilter: true,
+				interval:      "/-1/ ::",
+				apiTimeout:    defaultAPITimeout,
 			},
 			expectError:   true,
 			errorContains: "cannot be used together",
 		},
 		{
 			name: "valid with interval and created",
-			setup: func() {
-				stateFilter = ""
-				formatOutput = "plain"
-				createdFilter = true
-				updatedFilter = false
-				interval = "/-1/ ::"
+			opts: commandOptions{
+				formatOutput:  "plain",
+				createdFilter: true,
+				interval:      "/-1/ ::",
+				apiTimeout:    defaultAPITimeout,
 			},
 			expectError: false,
 		},
@@ -533,26 +492,7 @@ func TestValidateFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original values
-			origState := stateFilter
-			origFormat := formatOutput
-			origCreated := createdFilter
-			origUpdated := updatedFilter
-			origInterval := interval
-
-			defer func() {
-				stateFilter = origState
-				formatOutput = origFormat
-				createdFilter = origCreated
-				updatedFilter = origUpdated
-				interval = origInterval
-			}()
-
-			// Setup test state
-			tt.setup()
-
-			// Run validation
-			err := validateFlags()
+			err := validateFlags(&tt.opts)
 
 			if tt.expectError {
 				if err == nil {
@@ -575,59 +515,41 @@ func TestDateFilterOptions(t *testing.T) {
 	yesterday := now.AddDate(0, 0, -1)
 
 	tests := []struct {
-		name          string
-		createdFilter bool
-		updatedFilter bool
-		hasTime       bool
+		name    string
+		opts    commandOptions
+		hasTime bool
 	}{
 		{
-			name:          "created filter only",
-			createdFilter: true,
-			updatedFilter: false,
-			hasTime:       true,
+			name:    "created filter only",
+			opts:    commandOptions{createdFilter: true},
+			hasTime: true,
 		},
 		{
-			name:          "updated filter only",
-			createdFilter: false,
-			updatedFilter: true,
-			hasTime:       true,
+			name:    "updated filter only",
+			opts:    commandOptions{updatedFilter: true},
+			hasTime: true,
 		},
 		{
-			name:          "no filters with time",
-			createdFilter: false,
-			updatedFilter: false,
-			hasTime:       true,
+			name:    "no filters with time",
+			opts:    commandOptions{},
+			hasTime: true,
 		},
 		{
-			name:          "no filters no time",
-			createdFilter: false,
-			updatedFilter: false,
-			hasTime:       false,
+			name:    "no filters no time",
+			opts:    commandOptions{},
+			hasTime: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original values
-			origCreated := createdFilter
-			origUpdated := updatedFilter
-
-			defer func() {
-				createdFilter = origCreated
-				updatedFilter = origUpdated
-			}()
-
-			// Set test values
-			createdFilter = tt.createdFilter
-			updatedFilter = tt.updatedFilter
-
 			var beginTime, endTime time.Time
 			if tt.hasTime {
 				beginTime = yesterday
 				endTime = now
 			}
 
-			options := addDateFilterOptions([]core.GetIssuesOption{}, beginTime, endTime)
+			options := addDateFilterOptions(&tt.opts, []core.GetIssuesOption{}, beginTime, endTime)
 
 			// Verify function doesn't panic
 			if options == nil {
@@ -752,11 +674,8 @@ func TestValidateTimezone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			origTZ := timezone
-			defer func() { timezone = origTZ }()
-
-			timezone = tt.tz
-			err := validateTimezone()
+			o := &commandOptions{timezone: tt.tz, apiTimeout: defaultAPITimeout}
+			err := validateTimezone(o)
 
 			if tt.expectError {
 				if err == nil {
@@ -776,19 +695,6 @@ func TestValidateTimezone(t *testing.T) {
 
 // TestInitIssueCommand tests the shared init pipeline for issue commands.
 func TestInitIssueCommand(t *testing.T) {
-	// Save original global state
-	origLogLevel := logLevel
-	origInterval := interval
-	origTimezone := timezone
-	origTimeout := apiTimeout
-
-	defer func() {
-		logLevel = origLogLevel
-		interval = origInterval
-		timezone = origTimezone
-		apiTimeout = origTimeout
-	}()
-
 	// Helper to create a minimal cobra command with required flags.
 	newTestCmd := func() *cobra.Command {
 		cmd := &cobra.Command{Use: "test"}
@@ -815,10 +721,14 @@ func TestInitIssueCommand(t *testing.T) {
 
 		os.Setenv("GITLAB_TOKEN", "test-token")
 		os.Setenv("GITLAB_URI", "https://gitlab.example.com")
-		interval = ""
-		logLevel = "error"
 
-		result, err := initIssueCommand(newTestCmd())
+		o := &commandOptions{
+			logLevel:     "error",
+			formatOutput: "plain",
+			apiTimeout:   defaultAPITimeout,
+		}
+
+		result, err := initIssueCommand(o, newTestCmd())
 		if err != nil {
 			t.Fatalf("initIssueCommand() unexpected error: %v", err)
 		}
@@ -837,10 +747,14 @@ func TestInitIssueCommand(t *testing.T) {
 		}()
 
 		os.Unsetenv("GITLAB_TOKEN")
-		interval = ""
-		logLevel = "error"
 
-		_, err := initIssueCommand(newTestCmd())
+		o := &commandOptions{
+			logLevel:     "error",
+			formatOutput: "plain",
+			apiTimeout:   defaultAPITimeout,
+		}
+
+		_, err := initIssueCommand(o, newTestCmd())
 		if err == nil {
 			t.Fatal("initIssueCommand() expected error without GITLAB_TOKEN")
 		}
@@ -856,10 +770,15 @@ func TestInitIssueCommand(t *testing.T) {
 
 		os.Setenv("GITLAB_TOKEN", "test-token")
 		os.Setenv("GITLAB_URI", "https://gitlab.example.com")
-		interval = "/-1/ ::"
-		logLevel = "error"
 
-		result, err := initIssueCommand(newTestCmd())
+		o := &commandOptions{
+			logLevel:     "error",
+			formatOutput: "plain",
+			interval:     "/-1/ ::",
+			apiTimeout:   defaultAPITimeout,
+		}
+
+		result, err := initIssueCommand(o, newTestCmd())
 		if err != nil {
 			t.Fatalf("initIssueCommand() unexpected error: %v", err)
 		}
@@ -872,56 +791,44 @@ func TestInitIssueCommand(t *testing.T) {
 // TestApplyTimezoneFromEnv tests the applyTimezoneFromEnv function.
 func TestApplyTimezoneFromEnv(t *testing.T) {
 	t.Run("env applied when flag not set", func(t *testing.T) {
-		origTZ := timezone
 		origEnv := os.Getenv("GITLAB_TIMEZONE")
-		defer func() {
-			timezone = origTZ
-			os.Setenv("GITLAB_TIMEZONE", origEnv)
-		}()
+		defer os.Setenv("GITLAB_TIMEZONE", origEnv)
 
-		timezone = ""
+		o := &commandOptions{}
 		os.Setenv("GITLAB_TIMEZONE", "Europe/London")
 
-		applyTimezoneFromEnv(false)
+		applyTimezoneFromEnv(o, false)
 
-		if timezone != "Europe/London" {
-			t.Errorf("applyTimezoneFromEnv() timezone = %q, want %q", timezone, "Europe/London")
+		if o.timezone != "Europe/London" {
+			t.Errorf("applyTimezoneFromEnv() timezone = %q, want %q", o.timezone, "Europe/London")
 		}
 	})
 
 	t.Run("flag takes priority over env", func(t *testing.T) {
-		origTZ := timezone
 		origEnv := os.Getenv("GITLAB_TIMEZONE")
-		defer func() {
-			timezone = origTZ
-			os.Setenv("GITLAB_TIMEZONE", origEnv)
-		}()
+		defer os.Setenv("GITLAB_TIMEZONE", origEnv)
 
-		timezone = "America/Chicago"
+		o := &commandOptions{timezone: "America/Chicago"}
 		os.Setenv("GITLAB_TIMEZONE", "Europe/London")
 
-		applyTimezoneFromEnv(true)
+		applyTimezoneFromEnv(o, true)
 
-		if timezone != "America/Chicago" {
-			t.Errorf("applyTimezoneFromEnv() timezone = %q, want %q", timezone, "America/Chicago")
+		if o.timezone != "America/Chicago" {
+			t.Errorf("applyTimezoneFromEnv() timezone = %q, want %q", o.timezone, "America/Chicago")
 		}
 	})
 
 	t.Run("no env set leaves timezone unchanged", func(t *testing.T) {
-		origTZ := timezone
 		origEnv := os.Getenv("GITLAB_TIMEZONE")
-		defer func() {
-			timezone = origTZ
-			os.Setenv("GITLAB_TIMEZONE", origEnv)
-		}()
+		defer os.Setenv("GITLAB_TIMEZONE", origEnv)
 
-		timezone = ""
+		o := &commandOptions{}
 		os.Unsetenv("GITLAB_TIMEZONE")
 
-		applyTimezoneFromEnv(false)
+		applyTimezoneFromEnv(o, false)
 
-		if timezone != "" {
-			t.Errorf("applyTimezoneFromEnv() timezone = %q, want empty", timezone)
+		if o.timezone != "" {
+			t.Errorf("applyTimezoneFromEnv() timezone = %q, want empty", o.timezone)
 		}
 	})
 }
