@@ -18,8 +18,23 @@ var (
 // groupCmd represents the group command.
 var groupCmd = &cobra.Command{
 	Use:   "group",
-	Short: "Get issues of a GitLab group",
-	Long:  `Get issues of a GitLab group by ID.`,
+	Short: "Get issues from a GitLab group",
+	Long: `Retrieve and display issues from a GitLab group.
+
+A group ID is required and must be specified with the -g flag.
+
+EXAMPLES:
+  # Get all issues from a group
+  gitlab-issue-report group -g 678
+
+  # Issues created in the last month
+  gitlab-issue-report group -g 678 --created -i "/-30/ ::"
+
+  # Closed issues as markdown
+  gitlab-issue-report group -g 678 --state closed --format markdown
+
+  # Only issues assigned to you
+  gitlab-issue-report group -g 678 --mine`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Reconcile old and new flags
 		if err := reconcileFlags(cmd); err != nil {

@@ -24,8 +24,30 @@ var (
 
 var projectCmd = &cobra.Command{
 	Use:   "project",
-	Short: "Get issues of a GitLab project.",
-	Long:  `Get issues of a GitLab project by ID or automatically detect from git repository.`,
+	Short: "Get issues from a GitLab project",
+	Long: `Retrieve and display issues from a GitLab project.
+
+The project ID can be auto-detected from your current git repository's
+remote URL, or specified explicitly with the -p flag.
+
+EXAMPLES:
+  # Auto-detect project from git remote
+  gitlab-issue-report project
+
+  # Specify project ID
+  gitlab-issue-report project -p 12345
+
+  # Issues created in the last 2 weeks
+  gitlab-issue-report project --created -i "/-14/ ::"
+
+  # Issues updated in the last week, as markdown
+  gitlab-issue-report project --updated -i "/-7/ ::" --format markdown
+
+  # Only closed issues
+  gitlab-issue-report project --state closed
+
+  # Only issues assigned to you
+  gitlab-issue-report project --mine`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Reconcile old and new flags.
 		if err := reconcileFlags(cmd); err != nil {
