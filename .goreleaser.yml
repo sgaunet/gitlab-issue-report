@@ -11,6 +11,8 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -X github.com/sgaunet/gitlab-issue-report/cmd.version={{.Version}}
+      - -X github.com/sgaunet/gitlab-issue-report/cmd.commit={{.ShortCommit}}
+      - -X github.com/sgaunet/gitlab-issue-report/cmd.buildDate={{.Date}}
     goos:
       - linux
       - darwin

@@ -18,9 +18,14 @@ tasks:
 
   build:
     desc: "Build the binary"
+    vars:
+      COMMIT:
+        sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+      BUILD_DATE:
+        sh: date -u +%Y-%m-%dT%H:%M:%SZ
     cmds:
       - go mod download
-      - CGO_ENABLED=0 go build .
+      - CGO_ENABLED=0 go build -ldflags "-X github.com/sgaunet/gitlab-issue-report/cmd.commit={{.COMMIT}} -X github.com/sgaunet/gitlab-issue-report/cmd.buildDate={{.BUILD_DATE}}" .
 
   install-prereq:
     desc: "Install pre-requisites"
