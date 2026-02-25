@@ -167,7 +167,7 @@ func TestParseInterval(t *testing.T) {
 				}
 			}()
 
-			beginTime, endTime, err := parseInterval(tt.interval)
+			beginTime, endTime, err := parseInterval(tt.interval, "")
 
 			if err != nil {
 				t.Errorf("parseInterval() error = %v", err)
@@ -634,4 +634,198 @@ func TestDateFilterOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseIntervalWithTimezone tests parseInterval with various timezone values.
+func TestParseIntervalWithTimezone(t *testing.T) {
+	tests := []struct {
+		name        string
+		interval    string
+		tz          string
+		expectError bool
+	}{
+		{
+			name:        "valid interval with UTC",
+			interval:    "/-1/ ::",
+			tz:          "UTC",
+			expectError: false,
+		},
+		{
+			name:        "valid interval with America/New_York",
+			interval:    "/-1/ ::",
+			tz:          "America/New_York",
+			expectError: false,
+		},
+		{
+			name:        "valid interval with Europe/Paris",
+			interval:    "/-1/ ::",
+			tz:          "Europe/Paris",
+			expectError: false,
+		},
+		{
+			name:        "valid interval with Local",
+			interval:    "/-1/ ::",
+			tz:          "Local",
+			expectError: false,
+		},
+		{
+			name:        "valid interval with empty timezone",
+			interval:    "/-1/ ::",
+			tz:          "",
+			expectError: false,
+		},
+		{
+			name:        "empty interval with timezone",
+			interval:    "",
+			tz:          "UTC",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			beginTime, endTime, err := parseInterval(tt.interval, tt.tz)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("parseInterval() expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("parseInterval() unexpected error = %v", err)
+				}
+			}
+
+			if tt.interval == "" {
+				if !beginTime.IsZero() || !endTime.IsZero() {
+					t.Error("parseInterval() should return zero times for empty interval")
+				}
+			}
+		})
+	}
+}
+
+// TestValidateTimezone tests the validateTimezone function.
+func TestValidateTimezone(t *testing.T) {
+	tests := []struct {
+		name        string
+		tz          string
+		expectError bool
+	}{
+		{
+			name:        "empty timezone",
+			tz:          "",
+			expectError: false,
+		},
+		{
+			name:        "valid UTC",
+			tz:          "UTC",
+			expectError: false,
+		},
+		{
+			name:        "valid IANA timezone",
+			tz:          "America/New_York",
+			expectError: false,
+		},
+		{
+			name:        "valid Europe timezone",
+			tz:          "Europe/Paris",
+			expectError: false,
+		},
+		{
+			name:        "valid Local",
+			tz:          "Local",
+			expectError: false,
+		},
+		{
+			name:        "invalid timezone",
+			tz:          "Invalid/Timezone",
+			expectError: true,
+		},
+		{
+			name:        "random string",
+			tz:          "not-a-timezone",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origTZ := timezone
+			defer func() { timezone = origTZ }()
+
+			timezone = tt.tz
+			err := validateTimezone()
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("validateTimezone() expected error but got none")
+				}
+				if !strings.Contains(err.Error(), "invalid --timezone") {
+					t.Errorf("validateTimezone() error = %v, want error containing 'invalid --timezone'", err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("validateTimezone() unexpected error = %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyTimezoneFromEnv tests the applyTimezoneFromEnv function.
+func TestApplyTimezoneFromEnv(t *testing.T) {
+	t.Run("env applied when flag not set", func(t *testing.T) {
+		origTZ := timezone
+		origEnv := os.Getenv("GITLAB_TIMEZONE")
+		defer func() {
+			timezone = origTZ
+			os.Setenv("GITLAB_TIMEZONE", origEnv)
+		}()
+
+		timezone = ""
+		os.Setenv("GITLAB_TIMEZONE", "Europe/London")
+
+		applyTimezoneFromEnv(false)
+
+		if timezone != "Europe/London" {
+			t.Errorf("applyTimezoneFromEnv() timezone = %q, want %q", timezone, "Europe/London")
+		}
+	})
+
+	t.Run("flag takes priority over env", func(t *testing.T) {
+		origTZ := timezone
+		origEnv := os.Getenv("GITLAB_TIMEZONE")
+		defer func() {
+			timezone = origTZ
+			os.Setenv("GITLAB_TIMEZONE", origEnv)
+		}()
+
+		timezone = "America/Chicago"
+		os.Setenv("GITLAB_TIMEZONE", "Europe/London")
+
+		applyTimezoneFromEnv(true)
+
+		if timezone != "America/Chicago" {
+			t.Errorf("applyTimezoneFromEnv() timezone = %q, want %q", timezone, "America/Chicago")
+		}
+	})
+
+	t.Run("no env set leaves timezone unchanged", func(t *testing.T) {
+		origTZ := timezone
+		origEnv := os.Getenv("GITLAB_TIMEZONE")
+		defer func() {
+			timezone = origTZ
+			os.Setenv("GITLAB_TIMEZONE", origEnv)
+		}()
+
+		timezone = ""
+		os.Unsetenv("GITLAB_TIMEZONE")
+
+		applyTimezoneFromEnv(false)
+
+		if timezone != "" {
+			t.Errorf("applyTimezoneFromEnv() timezone = %q, want empty", timezone)
+		}
+	})
 }

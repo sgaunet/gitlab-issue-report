@@ -66,8 +66,11 @@ EXAMPLES:
 		// Apply timeout from environment variable if flag not set.
 		applyTimeoutFromEnv(cmd.Flags().Changed("api-timeout"))
 
+		// Apply timezone from environment variable if flag not set.
+		applyTimezoneFromEnv(cmd.Flags().Changed("timezone"))
+
 		// Parse interval if provided.
-		beginTime, endTime, err := parseInterval(interval)
+		beginTime, endTime, err := parseInterval(interval, timezone)
 		if err != nil {
 			logrus.Errorln(err.Error())
 			return err

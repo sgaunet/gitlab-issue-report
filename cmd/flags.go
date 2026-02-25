@@ -15,6 +15,7 @@ var (
 	errInvalidFormatValue     = errors.New("invalid --format value")
 	errIntervalRequired       = errors.New("--created or --updated requires --interval to be set")
 	errCreatedUpdatedConflict = errors.New("--created and --updated cannot be used together")
+	errInvalidTimezoneValue   = errors.New("invalid --timezone value")
 )
 
 // reconcileFlags processes flag values and applies flag priority logic.
@@ -40,7 +41,10 @@ func validateFlags() error {
 	if err := validateDateFilters(); err != nil {
 		return err
 	}
-	return validateAPITimeout()
+	if err := validateAPITimeout(); err != nil {
+		return err
+	}
+	return validateTimezone()
 }
 
 // validateStateFlag validates the state filter value.
@@ -82,6 +86,17 @@ func validateAPITimeout() error {
 	}
 	if apiTimeout > 5*time.Minute {
 		logrus.Warnf("--api-timeout is very long (%v), consider using a shorter timeout", apiTimeout)
+	}
+	return nil
+}
+
+// validateTimezone validates the timezone value using time.LoadLocation.
+func validateTimezone() error {
+	if timezone == "" {
+		return nil
+	}
+	if _, err := time.LoadLocation(timezone); err != nil {
+		return fmt.Errorf("%w: %s", errInvalidTimezoneValue, timezone)
 	}
 	return nil
 }
