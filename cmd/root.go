@@ -25,6 +25,7 @@ type commandOptions struct {
 	verboseFlag   bool          // Shorthand for verbose logging
 	interval      string        // Date interval
 	mineOption    bool          // Filter issues assigned to current user
+	labelsFilter  []string      // Filter issues by labels (AND semantics)
 	apiTimeout    time.Duration // API request timeout
 	timezone      string        // Timezone for date calculations
 }
@@ -72,6 +73,9 @@ EXAMPLES:
 
   # Show only issues assigned to you
   gitlab-issue-report project --mine
+
+  # Filter by labels (issues must have ALL listed labels)
+  gitlab-issue-report project --labels bug,backend
 
   # Use a specific timezone for date calculations
   gitlab-issue-report project -i "/-7/ ::" --timezone "America/New_York"
@@ -121,6 +125,8 @@ func init() {
 	projectCmd.Flags().StringVar(&opts.formatOutput, "format", "plain", "Output format: plain, table, markdown")
 
 	projectCmd.Flags().BoolVarP(&opts.mineOption, "mine", "M", false, "Only issues assigned to current user")
+	projectCmd.Flags().StringSliceVarP(&opts.labelsFilter, "labels", "l", nil,
+		"Filter by labels (comma-separated or repeated; issue must have ALL listed labels)")
 
 	rootCmd.AddCommand(projectCmd)
 
@@ -145,6 +151,8 @@ func init() {
 	groupCmd.Flags().StringVar(&opts.formatOutput, "format", "plain", "Output format: plain, table, markdown")
 
 	groupCmd.Flags().BoolVarP(&opts.mineOption, "mine", "M", false, "Only issues assigned to current user")
+	groupCmd.Flags().StringSliceVarP(&opts.labelsFilter, "labels", "l", nil,
+		"Filter by labels (comma-separated or repeated; issue must have ALL listed labels)")
 
 	rootCmd.AddCommand(groupCmd)
 }

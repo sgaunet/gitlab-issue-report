@@ -13,7 +13,7 @@ import (
 func createTestIssues() []*gitlab.Issue {
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)
-	
+
 	return []*gitlab.Issue{
 		{
 			ID:        1,
@@ -21,6 +21,7 @@ func createTestIssues() []*gitlab.Issue {
 			State:     "opened",
 			CreatedAt: &yesterday,
 			UpdatedAt: &now,
+			Labels:    gitlab.Labels{"bug", "backend"},
 		},
 		{
 			ID:        2,
@@ -35,6 +36,7 @@ func createTestIssues() []*gitlab.Issue {
 			State:     "opened",
 			CreatedAt: &yesterday,
 			UpdatedAt: &now,
+			Labels:    gitlab.Labels{"docs"},
 		},
 	}
 }
@@ -260,6 +262,70 @@ func TestRendererInterface(t *testing.T) {
 	var _ Renderer = NewMarkdownRenderer()
 	var _ Renderer = NewPlainRenderer(true)
 	var _ Renderer = NewTableRenderer()
+}
+
+// TestRenderers_Labels verifies that issue labels appear in the output of every renderer.
+func TestRenderers_Labels(t *testing.T) {
+	issues := createTestIssues()
+
+	tests := []struct {
+		name     string
+		renderer Renderer
+		expected []string
+	}{
+		{
+			name:     "plain renderer includes Labels header and values",
+			renderer: NewPlainRenderer(true),
+			expected: []string{"Labels", "bug, backend", "docs"},
+		},
+		{
+			name:     "table renderer includes LABELS header and values",
+			renderer: NewTableRenderer(),
+			expected: []string{"LABELS", "bug, backend", "docs"},
+		},
+		{
+			name:     "markdown renderer includes Labels column and values",
+			renderer: NewMarkdownRenderer(),
+			expected: []string{"| Labels |", "| bug, backend |", "| docs |"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := tt.renderer.Render(issues, &buf); err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+			output := buf.String()
+			for _, exp := range tt.expected {
+				if !strings.Contains(output, exp) {
+					t.Errorf("output missing %q\nGot:\n%s", exp, output)
+				}
+			}
+		})
+	}
+}
+
+// TestFormatLabels tests the formatLabels helper.
+func TestFormatLabels(t *testing.T) {
+	tests := []struct {
+		name string
+		in   gitlab.Labels
+		want string
+	}{
+		{name: "nil labels", in: nil, want: ""},
+		{name: "empty labels", in: gitlab.Labels{}, want: ""},
+		{name: "single label", in: gitlab.Labels{"bug"}, want: "bug"},
+		{name: "multiple labels", in: gitlab.Labels{"bug", "backend"}, want: "bug, backend"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatLabels(tt.in); got != tt.want {
+				t.Errorf("formatLabels() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 // createTestIssuesWithProjects creates test issues with ProjectID set for testing.

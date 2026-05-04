@@ -35,8 +35,9 @@ func NewPlainRenderer(printHeader bool) *PlainRenderer {
 // Render renders issues in plain text format.
 func (p *PlainRenderer) Render(issues []*gitlab.Issue, writer io.Writer) error {
 	if p.printHeader {
-		headerFormat := "%-70s %10s %-12s %-12s\n"
-		if _, err := fmt.Fprintf(writer, headerFormat, "Title", "State", "Created At", "Updated At"); err != nil {
+		headerFormat := "%-70s %10s %-12s %-12s %s\n"
+		if _, err := fmt.Fprintf(writer, headerFormat,
+			"Title", "State", "Created At", "Updated At", "Labels"); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
 	}
@@ -45,8 +46,9 @@ func (p *PlainRenderer) Render(issues []*gitlab.Issue, writer io.Writer) error {
 		state := issues[idx].State
 		createdAt := issues[idx].CreatedAt.Format("2006-01-02")
 		updatedAt := issues[idx].UpdatedAt.Format("2006-01-02")
-		rowFormat := "%-70s %10s %12s %12s\n"
-		if _, err := fmt.Fprintf(writer, rowFormat, title, state, createdAt, updatedAt); err != nil {
+		labels := formatLabels(issues[idx].Labels)
+		rowFormat := "%-70s %10s %12s %12s %s\n"
+		if _, err := fmt.Fprintf(writer, rowFormat, title, state, createdAt, updatedAt, labels); err != nil {
 			return fmt.Errorf("failed to write issue: %w", err)
 		}
 	}
@@ -93,8 +95,9 @@ func (p *PlainRenderer) renderWithProjectColumn(
 	writer io.Writer,
 ) error {
 	if p.printHeader {
-		headerFormat := "%-40s %-30s %10s %-12s %-12s\n"
-		if _, err := fmt.Fprintf(writer, headerFormat, "Project", "Title", "State", "Created At", "Updated At"); err != nil {
+		headerFormat := "%-40s %-30s %10s %-12s %-12s %s\n"
+		if _, err := fmt.Fprintf(writer, headerFormat,
+			"Project", "Title", "State", "Created At", "Updated At", "Labels"); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
 	}
@@ -106,13 +109,14 @@ func (p *PlainRenderer) renderWithProjectColumn(
 		}
 
 		title := truncateStr(issue.Title, maxTitleLengthWithProject)
-		rowFormat := "%-40s %-30s %10s %12s %12s\n"
+		rowFormat := "%-40s %-30s %10s %12s %12s %s\n"
 		if _, err := fmt.Fprintf(writer, rowFormat,
 			projectPath,
 			title,
 			issue.State,
 			issue.CreatedAt.Format("2006-01-02"),
-			issue.UpdatedAt.Format("2006-01-02")); err != nil {
+			issue.UpdatedAt.Format("2006-01-02"),
+			formatLabels(issue.Labels)); err != nil {
 			return fmt.Errorf("failed to write issue: %w", err)
 		}
 	}
@@ -130,10 +134,16 @@ func NewTableRenderer() *TableRenderer {
 // Render renders issues in table format.
 func (t *TableRenderer) Render(issues []*gitlab.Issue, writer io.Writer) error {
 	table := tablewriter.NewWriter(writer)
-	table.Header([]string{"Title", "State", "CreatedAt", "UpdatedAt"})
+	table.Header([]string{"Title", "State", "CreatedAt", "UpdatedAt", "Labels"})
 
 	for _, v := range issues {
-		row := []string{v.Title, v.State, v.CreatedAt.Format("2006-01-02"), v.UpdatedAt.Format("2006-01-02")}
+		row := []string{
+			v.Title,
+			v.State,
+			v.CreatedAt.Format("2006-01-02"),
+			v.UpdatedAt.Format("2006-01-02"),
+			formatLabels(v.Labels),
+		}
 		if err := table.Append(row); err != nil {
 			return fmt.Errorf("error appending table row: %w", err)
 		}
@@ -169,7 +179,7 @@ func (t *TableRenderer) renderGroupTable(
 	issues []*gitlab.Issue,
 	context *Context,
 ) error {
-	table.Header([]string{"Project", "Title", "State", "CreatedAt", "UpdatedAt"})
+	table.Header([]string{"Project", "Title", "State", "CreatedAt", "UpdatedAt", "Labels"})
 
 	for _, issue := range issues {
 		projectPath := context.ProjectMap[issue.ProjectID]
@@ -182,6 +192,7 @@ func (t *TableRenderer) renderGroupTable(
 			issue.State,
 			issue.CreatedAt.Format("2006-01-02"),
 			issue.UpdatedAt.Format("2006-01-02"),
+			formatLabels(issue.Labels),
 		}
 		if err := table.Append(row); err != nil {
 			return fmt.Errorf("error appending table row: %w", err)
@@ -196,13 +207,14 @@ func (t *TableRenderer) renderGroupTable(
 
 // renderRegularTable renders the table without project column.
 func (t *TableRenderer) renderRegularTable(table *tablewriter.Table, issues []*gitlab.Issue) error {
-	table.Header([]string{"Title", "State", "CreatedAt", "UpdatedAt"})
+	table.Header([]string{"Title", "State", "CreatedAt", "UpdatedAt", "Labels"})
 	for _, issue := range issues {
 		row := []string{
 			issue.Title,
 			issue.State,
 			issue.CreatedAt.Format("2006-01-02"),
 			issue.UpdatedAt.Format("2006-01-02"),
+			formatLabels(issue.Labels),
 		}
 		if err := table.Append(row); err != nil {
 			return fmt.Errorf("error appending table row: %w", err)
@@ -250,10 +262,10 @@ func (m *MarkdownRenderer) Render(issues []*gitlab.Issue, writer io.Writer) erro
 	if _, err := fmt.Fprintf(writer, "# GitLab Issues Report\n\n"); err != nil {
 		return fmt.Errorf("failed to write title: %w", err)
 	}
-	if _, err := fmt.Fprintf(writer, "| Title | State | Created At | Updated At |\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "| Title | State | Created At | Updated At | Labels |\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
-	if _, err := fmt.Fprintf(writer, "|-------|-------|------------|------------|\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "|-------|-------|------------|------------|--------|\n"); err != nil {
 		return fmt.Errorf("failed to write table separator: %w", err)
 	}
 
@@ -265,8 +277,10 @@ func (m *MarkdownRenderer) Render(issues []*gitlab.Issue, writer io.Writer) erro
 
 		createdAt := issue.CreatedAt.Format("2006-01-02")
 		updatedAt := issue.UpdatedAt.Format("2006-01-02")
+		labels := strings.ReplaceAll(formatLabels(issue.Labels), "|", "\\|")
 
-		if _, err := fmt.Fprintf(writer, "| %s | %s | %s | %s |\n", title, issue.State, createdAt, updatedAt); err != nil {
+		if _, err := fmt.Fprintf(writer, "| %s | %s | %s | %s | %s |\n",
+			title, issue.State, createdAt, updatedAt, labels); err != nil {
 			return fmt.Errorf("failed to write issue row: %w", err)
 		}
 	}
@@ -308,10 +322,10 @@ func (m *MarkdownRenderer) RenderWithContext(issues []*gitlab.Issue, context *Co
 
 // renderTable renders the markdown table for issues.
 func (m *MarkdownRenderer) renderTable(issues []*gitlab.Issue, writer io.Writer) error {
-	if _, err := fmt.Fprintf(writer, "| Title | State | Created At | Updated At |\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "| Title | State | Created At | Updated At | Labels |\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
-	if _, err := fmt.Fprintf(writer, "|-------|-------|------------|------------|\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "|-------|-------|------------|------------|--------|\n"); err != nil {
 		return fmt.Errorf("failed to write table separator: %w", err)
 	}
 
@@ -322,8 +336,10 @@ func (m *MarkdownRenderer) renderTable(issues []*gitlab.Issue, writer io.Writer)
 
 		createdAt := issue.CreatedAt.Format("2006-01-02")
 		updatedAt := issue.UpdatedAt.Format("2006-01-02")
+		labels := strings.ReplaceAll(formatLabels(issue.Labels), "|", "\\|")
 
-		if _, err := fmt.Fprintf(writer, "| %s | %s | %s | %s |\n", title, issue.State, createdAt, updatedAt); err != nil {
+		if _, err := fmt.Fprintf(writer, "| %s | %s | %s | %s | %s |\n",
+			title, issue.State, createdAt, updatedAt, labels); err != nil {
 			return fmt.Errorf("failed to write issue row: %w", err)
 		}
 	}
@@ -337,10 +353,10 @@ func (m *MarkdownRenderer) renderWithProjectColumn(
 	context *Context,
 	writer io.Writer,
 ) error {
-	if _, err := fmt.Fprintf(writer, "| Project | Title | State | Created At | Updated At |\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "| Project | Title | State | Created At | Updated At | Labels |\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
-	if _, err := fmt.Fprintf(writer, "|---------|-------|-------|------------|------------|\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "|---------|-------|-------|------------|------------|--------|\n"); err != nil {
 		return fmt.Errorf("failed to write table separator: %w", err)
 	}
 
@@ -356,15 +372,17 @@ func (m *MarkdownRenderer) renderWithProjectColumn(
 
 		createdAt := issue.CreatedAt.Format("2006-01-02")
 		updatedAt := issue.UpdatedAt.Format("2006-01-02")
+		labels := strings.ReplaceAll(formatLabels(issue.Labels), "|", "\\|")
 
 		if _, err := fmt.Fprintf(
 			writer,
-			"| %s | %s | %s | %s | %s |\n",
+			"| %s | %s | %s | %s | %s | %s |\n",
 			projectPath,
 			title,
 			issue.State,
 			createdAt,
 			updatedAt,
+			labels,
 		); err != nil {
 			return fmt.Errorf("failed to write issue row: %w", err)
 		}
@@ -378,4 +396,9 @@ func truncateStr(str string, length int) string {
 		return str[:length]
 	}
 	return str
+}
+
+// formatLabels joins issue labels with ", " for display.
+func formatLabels(labels gitlab.Labels) string {
+	return strings.Join([]string(labels), ", ")
 }
