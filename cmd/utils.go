@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sgaunet/calcdate/calcdatelib"
@@ -179,6 +180,9 @@ func buildIssueOptions(
 		return nil, err
 	}
 
+	// Add labels filter options
+	options = addLabelsFilterOptions(o, options)
+
 	return options, nil
 }
 
@@ -239,6 +243,26 @@ func addAssigneeFilterOptions(o *commandOptions, options []core.GetIssuesOption)
 		options = append(options, core.WithAssigneeUsername(username))
 	}
 	return options, nil
+}
+
+// addLabelsFilterOptions adds labels filter options if any labels are specified.
+func addLabelsFilterOptions(o *commandOptions, options []core.GetIssuesOption) []core.GetIssuesOption {
+	labels := sanitizeLabels(o.labelsFilter)
+	if len(labels) > 0 {
+		options = append(options, core.WithLabels(labels))
+	}
+	return options
+}
+
+// sanitizeLabels trims whitespace and drops empty entries.
+func sanitizeLabels(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, l := range in {
+		if t := strings.TrimSpace(l); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // initTrace initializes the logging based on debug level.

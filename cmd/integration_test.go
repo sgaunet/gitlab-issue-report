@@ -103,6 +103,16 @@ func TestBuildIssueOptions(t *testing.T) {
 			projectID: 123,
 			groupID:   0,
 		},
+		{
+			name: "with labels filter",
+			opts: commandOptions{
+				formatOutput: "plain",
+				apiTimeout:   defaultAPITimeout,
+				labelsFilter: []string{"bug", "backend"},
+			},
+			projectID: 123,
+			groupID:   0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -415,6 +425,68 @@ func TestStateFilterFunctionality(t *testing.T) {
 			// We can't directly inspect the options, but we can verify the function doesn't panic
 			if options == nil {
 				t.Error("addStatusFilterOptions() returned nil")
+			}
+		})
+	}
+}
+
+// TestAddLabelsFilterOptions tests the labels filter helper.
+func TestAddLabelsFilterOptions(t *testing.T) {
+	tests := []struct {
+		name      string
+		labels    []string
+		wantAdded bool
+	}{
+		{name: "nil labels", labels: nil, wantAdded: false},
+		{name: "empty slice", labels: []string{}, wantAdded: false},
+		{name: "single label", labels: []string{"bug"}, wantAdded: true},
+		{name: "multiple labels", labels: []string{"bug", "backend"}, wantAdded: true},
+		{name: "whitespace and empty entries", labels: []string{"  bug  ", "", "backend"}, wantAdded: true},
+		{name: "only whitespace", labels: []string{"  ", "\t"}, wantAdded: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &commandOptions{
+				labelsFilter: tt.labels,
+				apiTimeout:   defaultAPITimeout,
+			}
+
+			before := []core.GetIssuesOption{}
+			after := addLabelsFilterOptions(o, before)
+			added := len(after) > len(before)
+			if added != tt.wantAdded {
+				t.Errorf("addLabelsFilterOptions() added=%v, want %v", added, tt.wantAdded)
+			}
+		})
+	}
+}
+
+// TestSanitizeLabels tests the sanitizeLabels helper.
+func TestSanitizeLabels(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{name: "nil input", in: nil, want: []string{}},
+		{name: "no changes needed", in: []string{"bug", "backend"}, want: []string{"bug", "backend"}},
+		{name: "trims whitespace", in: []string{"  bug  ", "\tbackend\n"}, want: []string{"bug", "backend"}},
+		{name: "drops empty strings", in: []string{"bug", "", "backend"}, want: []string{"bug", "backend"}},
+		{name: "drops whitespace-only", in: []string{"bug", "   ", "backend"}, want: []string{"bug", "backend"}},
+		{name: "all empty", in: []string{"", "  "}, want: []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sanitizeLabels(tt.in)
+			if len(got) != len(tt.want) {
+				t.Fatalf("sanitizeLabels() len=%d, want %d (got %v)", len(got), len(tt.want), got)
+			}
+			for i, v := range tt.want {
+				if got[i] != v {
+					t.Errorf("sanitizeLabels()[%d]=%q, want %q", i, got[i], v)
+				}
 			}
 		})
 	}
